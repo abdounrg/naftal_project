@@ -1,0 +1,552 @@
+// ============================================
+// NAFTAL GAP - Prisma Schema
+// ============================================
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum UserRole {
+  administrator
+  dpe_member
+  district_member
+  agency_member
+  antenna_member
+}
+
+enum UserStatus {
+  active
+  inactive
+  pending
+}
+
+enum TpeModel {
+  IWIL_250   @map("IWIL 250")
+  MOVE_2500  @map("MOVE 2500")
+  NewPos
+}
+
+enum Operator {
+  Djezzy
+  Mobilis
+  Ooredoo
+}
+
+enum AssignmentType {
+  Initial
+  Supplementaire
+}
+
+enum StructureType {
+  agence
+  antenne
+  cellule
+}
+
+enum TpeStatus {
+  en_stock
+  en_service
+  en_maintenance
+  en_panne
+  en_transfert
+  vole
+  en_traitement
+  a_retourner
+  reforme
+}
+
+enum MaintenanceStatus {
+  en_panne
+  en_traitement
+  trs_envoye
+  trs_recu
+  envoye_fournisseur
+  repare
+  changement_sim
+  reconfigure
+  retourne
+  remplace
+  irreparable
+  reforme
+  a_retourner
+}
+
+enum CardStatus {
+  en_stock
+  en_circulation
+  en_maintenance
+  en_transfert
+  defectueux
+  expire
+  perdu
+  vole
+  en_traitement
+}
+
+enum CardMonitoringStatus {
+  en_traitement
+  defectueux
+  expire
+  perdu
+  vole
+  sim_endommage
+  physiquement_endommage
+  debloquee
+  remplace
+  n_a
+}
+
+enum ChargerTransferType {
+  charger
+  base
+}
+
+enum AuditAction {
+  login
+  logout
+  create
+  update
+  delete
+  view
+  export_data  @map("export")
+  import_data  @map("import")
+  transfer
+  settings
+}
+
+enum AuditModule {
+  auth
+  tpe
+  chargers
+  cards
+  users
+  structures
+  system
+}
+
+enum AuditSeverity {
+  info
+  warning
+  critical
+}
+
+// ============================================
+// 1. ORGANIZATIONAL STRUCTURE
+// ============================================
+
+model District {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  code      String   @unique @db.VarChar(20)
+  wilaya    String?  @db.VarChar(100)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  structures Structure[]
+  users      User[]
+
+  @@map("districts")
+}
+
+model Structure {
+  id         Int      @id @default(autoincrement())
+  districtId Int      @map("district_id")
+  code       String   @unique @db.VarChar(20)
+  name       String   @db.VarChar(150)
+  type       StructureType
+  wilaya     String?  @db.VarChar(100)
+  address    String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  district District  @relation(fields: [districtId], references: [id])
+  stations Station[]
+  users    User[]
+
+  @@index([districtId])
+  @@map("structures")
+}
+
+model Station {
+  id          Int      @id @default(autoincrement())
+  structureId Int      @map("structure_id")
+  code        String   @unique @db.VarChar(20)
+  name        String   @db.VarChar(150)
+  address     String?
+  wilaya      String?  @db.VarChar(100)
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  structure       Structure        @relation(fields: [structureId], references: [id])
+  tpes            Tpe[]
+  tpeMaintenance  TpeMaintenance[]
+  oldTpeReturns   TpeReturn[]      @relation("OldStation")
+  newTpeReturns   TpeReturn[]      @relation("NewStation")
+  managementCards ManagementCard[]
+  cardMonitoring  CardMonitoring[]
+
+  @@index([structureId])
+  @@map("stations")
+}
+
+// ============================================
+// 2. USER MANAGEMENT
+// ============================================
+
+model User {
+  id           Int        @id @default(autoincrement())
+  name         String     @db.VarChar(150)
+  email        String     @unique @db.VarChar(255)
+  phone        String?    @db.VarChar(20)
+  passwordHash String     @map("password_hash") @db.VarChar(255)
+  role         UserRole
+  districtId   Int?       @map("district_id")
+  structureId  Int?       @map("structure_id")
+  status       UserStatus @default(active)
+  failedLogins Int        @default(0) @map("failed_logins")
+  lockedUntil  DateTime?  @map("locked_until")
+  lastLoginAt  DateTime?  @map("last_login_at")
+  createdAt    DateTime   @default(now()) @map("created_at")
+  updatedAt    DateTime   @updatedAt @map("updated_at")
+
+  district      District?      @relation(fields: [districtId], references: [id])
+  structure     Structure?     @relation(fields: [structureId], references: [id])
+  refreshTokens RefreshToken[]
+  auditLogs     AuditLog[]
+
+  @@index([email])
+  @@index([role])
+  @@index([status])
+  @@index([districtId])
+  @@index([structureId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        Int      @id @default(autoincrement())
+  userId    Int      @map("user_id")
+  token     String   @unique @db.VarChar(512)
+  family    String   @db.VarChar(64) // For refresh token rotation detection
+  expiresAt DateTime @map("expires_at")
+  revokedAt DateTime? @map("revoked_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  ipAddress String?  @map("ip_address") @db.VarChar(45)
+  userAgent String?  @map("user_agent") @db.VarChar(512)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@index([family])
+  @@index([expiresAt])
+  @@map("refresh_tokens")
+}
+
+// ============================================
+// 3. TPE MODULE
+// ============================================
+
+model Tpe {
+  id              Int            @id @default(autoincrement())
+  serial          String         @unique @db.VarChar(50)
+  model           TpeModel
+  purchasePrice   Decimal?       @map("purchase_price") @db.Decimal(12, 2)
+  operator        Operator?
+  simSerial       String?        @map("sim_serial") @db.VarChar(50)
+  simIp           String?        @map("sim_ip") @db.VarChar(45)
+  simPhone        String?        @map("sim_phone") @db.VarChar(20)
+  receptionDate   DateTime?      @map("reception_date") @db.Date
+  deliveryDate    DateTime?      @map("delivery_date") @db.Date
+  expirationDate  DateTime?      @map("expiration_date") @db.Date
+  assignmentType  AssignmentType? @map("assignment_type")
+  stationId       Int?           @map("station_id")
+  status          TpeStatus      @default(en_stock)
+  inventoryNumber String?        @map("inventory_number") @db.VarChar(50)
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  station          Station?          @relation(fields: [stationId], references: [id])
+  maintenance      TpeMaintenance[]
+  returns          TpeReturn[]
+  reforms          TpeReform[]
+  transferItems    TpeTransferItem[]
+  managementCards  ManagementCard[]
+
+  @@index([serial])
+  @@index([status])
+  @@index([model])
+  @@index([stationId])
+  @@map("tpe")
+}
+
+model TpeMaintenance {
+  id                      Int               @id @default(autoincrement())
+  tpeId                   Int               @map("tpe_id")
+  stationId               Int?              @map("station_id")
+  operationMode           String            @map("operation_mode") @db.VarChar(50)
+  breakdownDate           DateTime          @map("breakdown_date") @db.Date
+  diagnostic              String?
+  trsStStr                DateTime?         @map("trs_st_str") @db.Date
+  trsStrDpe               DateTime?         @map("trs_str_dpe") @db.Date
+  trsDpeDcsi              DateTime?         @map("trs_dpe_dcsi") @db.Date
+  trsDcsiDpe              DateTime?         @map("trs_dcsi_dpe") @db.Date
+  trsDpeStr               DateTime?         @map("trs_dpe_str") @db.Date
+  trsStrSt                DateTime?         @map("trs_str_st") @db.Date
+  status                  MaintenanceStatus @default(en_traitement)
+  processingDuration      Int?              @map("processing_duration")
+  immobilizationDuration  Int?              @map("immobilization_duration")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+
+  tpe     Tpe      @relation(fields: [tpeId], references: [id])
+  station Station? @relation(fields: [stationId], references: [id])
+
+  @@index([tpeId])
+  @@index([status])
+  @@index([breakdownDate])
+  @@map("tpe_maintenance")
+}
+
+model TpeReturn {
+  id                      Int       @id @default(autoincrement())
+  tpeId                   Int       @map("tpe_id")
+  oldStationId            Int?      @map("old_station_id")
+  newStationId            Int?      @map("new_station_id")
+  returnReason            String    @map("return_reason") @db.VarChar(50)
+  trsSt1Str               DateTime? @map("trs_st1_str") @db.Date
+  trsStrDpe               DateTime? @map("trs_str_dpe") @db.Date
+  trsDpeDcsi              DateTime? @map("trs_dpe_dcsi") @db.Date
+  trsDcsiDpe              DateTime? @map("trs_dcsi_dpe") @db.Date
+  trsDpeStr               DateTime? @map("trs_dpe_str") @db.Date
+  trsStrSt2               DateTime? @map("trs_str_st2") @db.Date
+  processingDuration      Int?      @map("processing_duration")
+  immobilizationDuration  Int?      @map("immobilization_duration")
+  createdAt               DateTime  @default(now()) @map("created_at")
+  updatedAt               DateTime  @updatedAt @map("updated_at")
+
+  tpe        Tpe      @relation(fields: [tpeId], references: [id])
+  oldStation Station? @relation("OldStation", fields: [oldStationId], references: [id])
+  newStation Station? @relation("NewStation", fields: [newStationId], references: [id])
+
+  @@index([tpeId])
+  @@map("tpe_returns")
+}
+
+model TpeTransfer {
+  id                 Int       @id @default(autoincrement())
+  source             String    @db.VarChar(150)
+  destination        String    @db.VarChar(150)
+  beneficiaryName    String?   @map("beneficiary_name") @db.VarChar(150)
+  beneficiaryFunction String?  @map("beneficiary_function") @db.VarChar(100)
+  exitDate           DateTime  @map("exit_date") @db.Date
+  nbrTpe             Int       @default(1) @map("nbr_tpe")
+  discharge          String?   @db.VarChar(50)
+  btsNumber          String?   @map("bts_number") @db.VarChar(50)
+  receptionDate      DateTime? @map("reception_date") @db.Date
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  items TpeTransferItem[]
+
+  @@index([exitDate])
+  @@map("tpe_transfers")
+}
+
+model TpeTransferItem {
+  id         Int @id @default(autoincrement())
+  transferId Int @map("transfer_id")
+  tpeId      Int @map("tpe_id")
+
+  transfer TpeTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  tpe      Tpe         @relation(fields: [tpeId], references: [id])
+
+  @@map("tpe_transfer_items")
+}
+
+model TpeReform {
+  id         Int      @id @default(autoincrement())
+  tpeId      Int      @map("tpe_id")
+  reformPv   String?  @map("reform_pv") @db.VarChar(50)
+  reformDate DateTime @map("reform_date") @db.Date
+  reason     String?
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  tpe Tpe @relation(fields: [tpeId], references: [id])
+
+  @@index([tpeId])
+  @@map("tpe_reforms")
+}
+
+// ============================================
+// 4. CHARGER / BASE MODULE
+// ============================================
+
+model Charger {
+  id        Int      @id @default(autoincrement())
+  model     String   @db.VarChar(100)
+  tpeModel  String?  @map("tpe_model") @db.VarChar(50)
+  quantity  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("chargers")
+}
+
+model Base {
+  id        Int      @id @default(autoincrement())
+  serial    String   @unique @db.VarChar(50)
+  model     String   @db.VarChar(100)
+  quantity  Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  chargerTransfers ChargerTransfer[]
+
+  @@map("bases")
+}
+
+model ChargerTransfer {
+  id                 Int                @id @default(autoincrement())
+  type               ChargerTransferType
+  source             String             @db.VarChar(150)
+  destination        String             @db.VarChar(150)
+  beneficiaryName    String?            @map("beneficiary_name") @db.VarChar(150)
+  beneficiaryFunction String?           @map("beneficiary_function") @db.VarChar(100)
+  exitDate           DateTime           @map("exit_date") @db.Date
+  nbrItems           Int                @default(1) @map("nbr_items")
+  discharge          String?            @db.VarChar(50)
+  btsNumber          String?            @map("bts_number") @db.VarChar(50)
+  receptionDate      DateTime?          @map("reception_date") @db.Date
+  baseId             Int?               @map("base_id")
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  base Base? @relation(fields: [baseId], references: [id])
+
+  @@index([exitDate])
+  @@map("charger_transfers")
+}
+
+// ============================================
+// 5. MANAGEMENT CARDS MODULE
+// ============================================
+
+model ManagementCard {
+  id             Int        @id @default(autoincrement())
+  cardSerial     String     @unique @map("card_serial") @db.VarChar(50)
+  tpeId          Int?       @map("tpe_id")
+  stationId      Int?       @map("station_id")
+  receptionDate  DateTime?  @map("reception_date") @db.Date
+  deliveryDate   DateTime?  @map("delivery_date") @db.Date
+  expirationDate DateTime?  @map("expiration_date") @db.Date
+  status         CardStatus @default(en_stock)
+  createdAt      DateTime   @default(now()) @map("created_at")
+  updatedAt      DateTime   @updatedAt @map("updated_at")
+
+  tpe          Tpe?              @relation(fields: [tpeId], references: [id])
+  station      Station?          @relation(fields: [stationId], references: [id])
+  monitoring   CardMonitoring[]  @relation("MonitoredCard")
+  substitution CardMonitoring[]  @relation("SubstitutionCard")
+  transferItems CardTransferItem[]
+
+  @@index([cardSerial])
+  @@index([status])
+  @@index([stationId])
+  @@map("management_cards")
+}
+
+model CardMonitoring {
+  id                      Int                  @id @default(autoincrement())
+  cardId                  Int                  @map("card_id")
+  stationId               Int?                 @map("station_id")
+  operationMode           String?              @map("operation_mode") @db.VarChar(100)
+  anomalyDate             DateTime             @map("anomaly_date") @db.Date
+  diagnostic              String?
+  trsStStr                DateTime?            @map("trs_st_str") @db.Date
+  trsStrDpe               DateTime?            @map("trs_str_dpe") @db.Date
+  trsDpeDcsi              DateTime?            @map("trs_dpe_dcsi") @db.Date
+  trsDcsiDpe              DateTime?            @map("trs_dcsi_dpe") @db.Date
+  trsDpeStr               DateTime?            @map("trs_dpe_str") @db.Date
+  trsStrSt                DateTime?            @map("trs_str_st") @db.Date
+  substitutionCardId      Int?                 @map("substitution_card_id")
+  status                  CardMonitoringStatus @default(en_traitement)
+  processingDuration      Int?                 @map("processing_duration")
+  immobilizationDuration  Int?                 @map("immobilization_duration")
+  createdAt               DateTime             @default(now()) @map("created_at")
+  updatedAt               DateTime             @updatedAt @map("updated_at")
+
+  card             ManagementCard  @relation("MonitoredCard", fields: [cardId], references: [id])
+  station          Station?        @relation(fields: [stationId], references: [id])
+  substitutionCard ManagementCard? @relation("SubstitutionCard", fields: [substitutionCardId], references: [id])
+
+  @@index([cardId])
+  @@index([status])
+  @@map("card_monitoring")
+}
+
+model CardTransfer {
+  id                 Int       @id @default(autoincrement())
+  source             String    @db.VarChar(150)
+  destination        String    @db.VarChar(150)
+  beneficiaryName    String?   @map("beneficiary_name") @db.VarChar(150)
+  beneficiaryFunction String?  @map("beneficiary_function") @db.VarChar(100)
+  exitDate           DateTime  @map("exit_date") @db.Date
+  nbrCards           Int       @default(1) @map("nbr_cards")
+  discharge          String?   @db.VarChar(50)
+  btsNumber          String?   @map("bts_number") @db.VarChar(50)
+  receptionDate      DateTime? @map("reception_date") @db.Date
+  createdAt          DateTime  @default(now()) @map("created_at")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  items CardTransferItem[]
+
+  @@index([exitDate])
+  @@map("card_transfers")
+}
+
+model CardTransferItem {
+  id         Int @id @default(autoincrement())
+  transferId Int @map("transfer_id")
+  cardId     Int @map("card_id")
+
+  transfer CardTransfer   @relation(fields: [transferId], references: [id], onDelete: Cascade)
+  card     ManagementCard @relation(fields: [cardId], references: [id])
+
+  @@map("card_transfer_items")
+}
+
+// ============================================
+// 6. AUDIT LOGS
+// ============================================
+
+model AuditLog {
+  id        Int           @id @default(autoincrement())
+  userId    Int           @map("user_id")
+  userName  String        @map("user_name") @db.VarChar(150)
+  userRole  String        @map("user_role") @db.VarChar(30)
+  action    AuditAction
+  module    AuditModule
+  target    String?       @db.VarChar(255)
+  details   String?
+  ipAddress String?       @map("ip_address") @db.VarChar(45)
+  severity  AuditSeverity @default(info)
+  createdAt DateTime      @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([module])
+  @@index([severity])
+  @@index([createdAt(sort: Desc)])
+  @@map("audit_logs")
+}
