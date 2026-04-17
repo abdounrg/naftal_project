@@ -19,6 +19,19 @@ export class StructuresController {
     ApiResponse.success(res, data);
   });
 
+  // Lookup by code
+  static lookupStructureByCode = asyncWrapper(async (req: Request, res: Response) => {
+    const code = req.params.code as string;
+    const data = await StructuresService.lookupStructureByCode(code);
+    ApiResponse.success(res, data ?? null);
+  });
+
+  static lookupStationByCode = asyncWrapper(async (req: Request, res: Response) => {
+    const code = req.params.code as string;
+    const data = await StructuresService.lookupStationByCode(code);
+    ApiResponse.success(res, data ?? null);
+  });
+
   // Structures
   static listStructures = asyncWrapper(async (req: Request, res: Response) => {
     const data = await StructuresService.listStructures(req.query);

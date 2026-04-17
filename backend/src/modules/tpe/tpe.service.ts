@@ -37,11 +37,6 @@ export class TpeService {
     return { data, meta: buildPaginationMeta(total, page, per_page) };
   }
 
-  // ─── Fleet (en_service only) ───
-  static async fleet(query: any) {
-    return this.list({ ...query, status: TpeStatus.en_service });
-  }
-
   static async getById(id: number) {
     const tpe = await prisma.tpe.findUnique({
       where: { id },

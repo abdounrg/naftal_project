@@ -20,6 +20,27 @@ export class StructuresService {
     return district;
   }
 
+  static async lookupStructureByCode(code: string) {
+    const structure = await prisma.structure.findUnique({
+      where: { code },
+      include: {
+        district: { select: { id: true, name: true, code: true } },
+        stations: { select: { id: true, code: true, name: true }, orderBy: { name: 'asc' } },
+      },
+    });
+    return structure;
+  }
+
+  static async lookupStationByCode(code: string) {
+    const station = await prisma.station.findUnique({
+      where: { code },
+      include: {
+        structure: { select: { id: true, name: true, code: true, district: { select: { id: true, name: true, code: true } } } },
+      },
+    });
+    return station;
+  }
+
   // ─── Structures ───
   static async listStructures(query: any) {
     const where: Prisma.StructureWhereInput = {};

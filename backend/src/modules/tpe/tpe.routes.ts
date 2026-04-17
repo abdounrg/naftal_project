@@ -20,9 +20,6 @@ router.post('/stock', dpeAndAbove, validate(createTpeSchema), TpeController.crea
 router.put('/stock/:id', dpeAndAbove, validate(updateTpeSchema), TpeController.update);
 router.delete('/stock/:id', dpeAndAbove, TpeController.delete);
 
-// ─── Fleet ───
-router.get('/fleet', allRoles, validate(tpeListQuerySchema, 'query'), TpeController.fleet);
-
 // ─── Maintenance ───
 router.get('/maintenance', allRoles, TpeController.listMaintenance);
 router.post('/maintenance', districtAndAbove, validate(createMaintenanceSchema), TpeController.createMaintenance);

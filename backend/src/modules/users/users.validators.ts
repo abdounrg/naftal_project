@@ -9,6 +9,7 @@ export const createUserSchema = z.object({
   role: z.nativeEnum(UserRole),
   districtId: z.coerce.number().int().positive().optional(),
   structureId: z.coerce.number().int().positive().optional().nullable(),
+  structureCode: z.string().optional(),
   status: z.nativeEnum(UserStatus).default('active'),
 });
 

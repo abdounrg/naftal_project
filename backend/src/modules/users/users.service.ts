@@ -60,7 +60,18 @@ export class UsersService {
     if (existing) throw AppError.conflict('A user with this email already exists');
 
     const passwordHash = await bcrypt.hash(input.password, CONSTANTS.BCRYPT_ROUNDS);
-    const { password, ...rest } = input;
+    const { password, structureCode, ...rest } = input as any;
+
+    // Resolve structureCode to structureId and districtId
+    if (structureCode && !rest.structureId) {
+      const structure = await prisma.structure.findUnique({
+        where: { code: structureCode },
+        include: { district: true },
+      });
+      if (!structure) throw AppError.notFound(`Structure with code '${structureCode}' not found`);
+      rest.structureId = structure.id;
+      rest.districtId = structure.districtId;
+    }
 
     return prisma.user.create({
       data: { ...rest, passwordHash },

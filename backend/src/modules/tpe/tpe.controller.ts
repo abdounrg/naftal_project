@@ -38,12 +38,6 @@ export class TpeController {
     ApiResponse.noContent(res);
   });
 
-  // ─── Fleet ───
-  static fleet = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await TpeService.fleet(req.query);
-    ApiResponse.paginated(res, result.data, result.meta);
-  });
-
   // ─── Maintenance ───
   static listMaintenance = asyncWrapper(async (req: Request, res: Response) => {
     const result = await TpeService.listMaintenance(req.query);

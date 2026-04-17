@@ -11,6 +11,10 @@ router.use(authenticate, allRoles);
 router.get('/districts', StructuresController.listDistricts);
 router.get('/districts/:id', StructuresController.getDistrict);
 
+// Lookup by code
+router.get('/structures/lookup/:code', StructuresController.lookupStructureByCode);
+router.get('/stations/lookup/:code', StructuresController.lookupStationByCode);
+
 // Structures
 router.get('/structures', StructuresController.listStructures);
 router.get('/structures/:id', StructuresController.getStructure);
