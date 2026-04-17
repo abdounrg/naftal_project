@@ -1,8 +1,8 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import DataTable from '../../components/DataTable';
 import { useLanguage } from '../../context/LanguageContext';
-import { usersApi } from '../../lib/api';
+import { usersApi, structuresApi } from '../../lib/api';
 import { useApiData } from '../../hooks/useApiData';
 import { X, UserPlus, Shield, Building2 } from 'lucide-react';
 
@@ -32,8 +32,46 @@ const UserManagement = () => {
   const fetchUsers = useCallback(() => usersApi.getAll({ per_page: 1000 }), []);
   const { data: users, refetch } = useApiData<User>({ fetchFn: fetchUsers });
 
-  const emptyForm = { name: '', email: '', phone: '', password: '', role: 'agency_member' as UserRole, district: '', structure: '', station: '' };
+  const emptyForm = { name: '', email: '', phone: '', password: '', role: 'agency_member' as UserRole, structureCode: '' };
   const [formData, setFormData] = useState(emptyForm);
+
+  // Structure code lookup
+  const [structureName, setStructureName] = useState('');
+  const [structureDistrict, setStructureDistrict] = useState('');
+  const [structureLookupStatus, setStructureLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not-found'>('idle');
+  const structureTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  useEffect(() => {
+    const code = formData.structureCode.trim();
+    if (code.length < 3) {
+      setStructureName('');
+      setStructureDistrict('');
+      setStructureLookupStatus('idle');
+      return;
+    }
+    setStructureLookupStatus('loading');
+    clearTimeout(structureTimerRef.current);
+    structureTimerRef.current = setTimeout(async () => {
+      try {
+        const res = await structuresApi.lookupStructureByCode(code);
+        const data = res.data?.data;
+        if (data) {
+          setStructureName(data.name);
+          setStructureDistrict(data.district?.name || '');
+          setStructureLookupStatus('found');
+        } else {
+          setStructureName('');
+          setStructureDistrict('');
+          setStructureLookupStatus('not-found');
+        }
+      } catch {
+        setStructureName('');
+        setStructureDistrict('');
+        setStructureLookupStatus('not-found');
+      }
+    }, 400);
+    return () => clearTimeout(structureTimerRef.current);
+  }, [formData.structureCode]);
 
   const roleLabels: Record<UserRole, { fr: string; en: string; color: string }> = {
     administrator: { fr: 'Administrateur', en: 'Administrator', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
@@ -47,16 +85,19 @@ const UserManagement = () => {
     e.preventDefault();
     try {
       if (isEditing && selectedUser) {
-        const updateData: Record<string, unknown> = { name: formData.name, email: formData.email, phone: formData.phone, role: formData.role };
+        const updateData: Record<string, unknown> = { name: formData.name, email: formData.email, phone: formData.phone, role: formData.role, structureCode: formData.structureCode || undefined };
         if (formData.password) updateData.password = formData.password;
         await usersApi.update(selectedUser.id, updateData);
       } else {
-        await usersApi.create({ name: formData.name, email: formData.email, phone: formData.phone, password: formData.password, role: formData.role });
+        await usersApi.create({ name: formData.name, email: formData.email, phone: formData.phone, password: formData.password, role: formData.role, structureCode: formData.structureCode || undefined });
       }
       setShowAddModal(false);
       setSelectedUser(null);
       setIsEditing(false);
       setFormData(emptyForm);
+      setStructureName('');
+      setStructureDistrict('');
+      setStructureLookupStatus('idle');
       refetch();
     } catch (err) {
       console.error('Failed to save user:', err);
@@ -66,10 +107,13 @@ const UserManagement = () => {
   const handleEdit = (row: User) => {
     setSelectedUser(row);
     setIsEditing(true);
-    const districtName = typeof row.district === 'object' && row.district ? (row.district as any).name : (row.district || '');
-    const structureName = typeof row.structure === 'object' && row.structure ? (row.structure as any).name : (row.structure || '');
-    const stationName = typeof row.station === 'object' && row.station ? (row.station as any).name : (row.station || '');
-    setFormData({ name: row.name, email: row.email, phone: row.phone || '', password: '', role: row.role, district: districtName, structure: structureName, station: stationName });
+    const sCode = typeof row.structure === 'object' && row.structure ? (row.structure as any).code : '';
+    const sName = typeof row.structure === 'object' && row.structure ? (row.structure as any).name : (row.structure || '');
+    const dName = typeof row.district === 'object' && row.district ? (row.district as any).name : (row.district || '');
+    setStructureName(sName);
+    setStructureDistrict(dName);
+    if (sCode) setStructureLookupStatus('found');
+    setFormData({ name: row.name, email: row.email, phone: row.phone || '', password: '', role: row.role, structureCode: sCode });
     setShowAddModal(true);
   };
 
@@ -243,24 +287,37 @@ const UserManagement = () => {
                   </select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District *</label>
-                  <select required value={formData.district} onChange={(e) => setFormData({ ...formData, district: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--naftal-blue)] focus:border-transparent">
-                    <option value="">{language === 'fr' ? 'Selectionner...' : 'Select...'}</option>
-                    <option value="DPE">DPE</option>
-                    <option value="Alger">Alger</option>
-                    <option value="Oran">Oran</option>
-                    <option value="Constantine">Constantine</option>
-                    <option value="Setif">Setif</option>
-                    <option value="Annaba">Annaba</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    {language === 'fr' ? 'Code Structure' : 'Structure Code'} *
+                  </label>
+                  <input type="text" required maxLength={4} value={formData.structureCode}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^a-zA-Z0-9]/g, '').slice(0, 4);
+                      setFormData({ ...formData, structureCode: val });
+                    }}
+                    placeholder="ex: 2616"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--naftal-blue)] focus:border-transparent" />
+                  {structureLookupStatus === 'loading' && (
+                    <p className="text-xs text-blue-500 mt-1">{language === 'fr' ? 'Recherche...' : 'Searching...'}</p>
+                  )}
+                  {structureLookupStatus === 'not-found' && (
+                    <p className="text-xs text-red-500 mt-1">{language === 'fr' ? 'Structure non trouvee' : 'Structure not found'}</p>
+                  )}
+                  {structureLookupStatus === 'found' && (
+                    <p className="text-xs text-green-600 mt-1">{structureName}</p>
+                  )}
                 </div>
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    {language === 'fr' ? 'Structure commerciale' : 'Commercial Structure'}
+                    {language === 'fr' ? 'Nom Structure' : 'Structure Name'}
                   </label>
-                  <input type="text" value={formData.structure} onChange={(e) => setFormData({ ...formData, structure: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-[var(--naftal-blue)] focus:border-transparent" />
+                  <input type="text" readOnly tabIndex={-1} value={structureName}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed" />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
+                  <input type="text" readOnly tabIndex={-1} value={structureDistrict}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-gray-900 dark:text-white cursor-not-allowed" />
                 </div>
               </div>
 

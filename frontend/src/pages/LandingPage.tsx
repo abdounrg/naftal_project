@@ -102,7 +102,7 @@ const LandingPage = () => {
       title: t('modules.tpe.title'),
       description: t('modules.tpe.desc'),
       image: '/module-tpe.jpg',
-      features: [t('module.tag.stockTpe'), t('module.tag.parcTpe'), t('module.tag.maintenance'), t('module.tag.retours'), t('module.tag.transferts'), t('module.tag.reforme')],
+      features: [t('module.tag.stockTpe'), t('module.tag.maintenance'), t('module.tag.retours'), t('module.tag.transferts'), t('module.tag.reforme')],
       color: 'from-blue-500 to-blue-600',
       stats: { label: t('stats.tpe'), value: '1,234' },
     },

@@ -87,8 +87,6 @@ const translations = {
     // TPE Module
     'tpe.stock.title': 'Stock TPE',
     'tpe.stock.subtitle': 'Gestion du stock des terminaux de paiement',
-    'tpe.fleet.title': 'Parc TPE',
-    'tpe.fleet.subtitle': 'Suivi des TPE en circulation',
     'tpe.maintenance.title': 'Maintenance TPE',
     'tpe.maintenance.subtitle': 'Gestion des TPE en maintenance',
     'tpe.returns.title': 'Retours et Reconfiguration',
@@ -118,7 +116,6 @@ const translations = {
 
     // Landing page module tags
     'module.tag.stockTpe': 'Stock TPE',
-    'module.tag.parcTpe': 'Parc TPE',
     'module.tag.maintenance': 'Maintenance',
     'module.tag.retours': 'Retours',
     'module.tag.transferts': 'Transferts',
@@ -258,8 +255,6 @@ const translations = {
     // TPE Module
     'tpe.stock.title': 'TPE Stock',
     'tpe.stock.subtitle': 'Payment terminal stock management',
-    'tpe.fleet.title': 'TPE Fleet',
-    'tpe.fleet.subtitle': 'Tracking TPE in circulation',
     'tpe.maintenance.title': 'TPE Maintenance',
     'tpe.maintenance.subtitle': 'Managing TPE under maintenance',
     'tpe.returns.title': 'Returns and Reconfiguration',
@@ -289,7 +284,6 @@ const translations = {
 
     // Landing page module tags
     'module.tag.stockTpe': 'TPE Stock',
-    'module.tag.parcTpe': 'TPE Fleet',
     'module.tag.maintenance': 'Maintenance',
     'module.tag.retours': 'Returns',
     'module.tag.transferts': 'Transfers',

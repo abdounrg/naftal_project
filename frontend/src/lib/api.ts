@@ -107,8 +107,6 @@ export const tpeApi = {
   createStock: (data: Record<string, unknown>) => api.post('/tpe/stock', data),
   updateStock: (id: number, data: Record<string, unknown>) => api.put(`/tpe/stock/${id}`, data),
   deleteStock: (id: number) => api.delete(`/tpe/stock/${id}`),
-  // Fleet
-  getFleet: (params?: Record<string, unknown>) => api.get('/tpe/fleet', { params }),
   // Maintenance
   getMaintenance: (params?: Record<string, unknown>) => api.get('/tpe/maintenance', { params }),
   createMaintenance: (data: Record<string, unknown>) => api.post('/tpe/maintenance', data),
@@ -167,6 +165,8 @@ export const structuresApi = {
   getDistrictById: (id: number) => api.get(`/org/districts/${id}`),
   getStructures: (params?: Record<string, unknown>) => api.get('/org/structures', { params }),
   getStructureById: (id: number) => api.get(`/org/structures/${id}`),
+  lookupStructureByCode: (code: string) => api.get(`/org/structures/lookup/${encodeURIComponent(code)}`),
+  lookupStationByCode: (code: string) => api.get(`/org/stations/lookup/${encodeURIComponent(code)}`),
   createStructure: (data: Record<string, unknown>) => api.post('/org/structures', data),
   updateStructure: (id: number, data: Record<string, unknown>) => api.put(`/org/structures/${id}`, data),
   deleteStructure: (id: number) => api.delete(`/org/structures/${id}`),

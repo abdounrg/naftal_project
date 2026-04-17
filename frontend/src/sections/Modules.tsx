@@ -27,11 +27,10 @@ const Modules = () => {
   const modules = [
     {
       title: 'Gestion des TPE NAFTALCARD',
-      description: 'Suivi complet des terminaux de paiement electronique avec gestion du stock, du parc en circulation, de la maintenance, des retours et des transferts.',
+      description: 'Suivi complet des terminaux de paiement electronique avec gestion du stock, de la maintenance, des retours et des transferts.',
       image: '/module-tpe.jpg',
       features: [
         'Stock TPE',
-        'Parc TPE',
         'Maintenance',
         'Retours',
         'Transferts',

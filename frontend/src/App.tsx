@@ -8,7 +8,6 @@ import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import TPEStock from './pages/tpe/TPEStock';
-import TPEFleet from './pages/tpe/TPEFleet';
 import TPEMaintenance from './pages/tpe/TPEMaintenance';
 import TPEReturns from './pages/tpe/TPEReturns';
 import TPETransfers from './pages/tpe/TPETransfers';
@@ -46,7 +45,6 @@ function AnimatedRoutes() {
         
         {/* TPE Module Routes */}
         <Route path="/tpe/stock" element={<ProtectedRoute><TPEStock /></ProtectedRoute>} />
-        <Route path="/tpe/fleet" element={<ProtectedRoute><TPEFleet /></ProtectedRoute>} />
         <Route path="/tpe/maintenance" element={<ProtectedRoute><TPEMaintenance /></ProtectedRoute>} />
         <Route path="/tpe/returns" element={<ProtectedRoute><TPEReturns /></ProtectedRoute>} />
         <Route path="/tpe/transfers" element={<ProtectedRoute><TPETransfers /></ProtectedRoute>} />

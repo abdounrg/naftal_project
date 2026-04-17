@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import DataTable from '../../components/DataTable';
 import { useLanguage } from '../../context/LanguageContext';
-import { cardsApi } from '../../lib/api';
+import { cardsApi, structuresApi } from '../../lib/api';
 import { useApiData } from '../../hooks/useApiData';
 
 const CardCirculation = () => {
@@ -12,6 +12,9 @@ const CardCirculation = () => {
 
   const fetchCirculation = useCallback(() => cardsApi.getCirculation({ per_page: 1000 }), []);
   const { data: circulationData } = useApiData<any>({ fetchFn: fetchCirculation });
+  const fetchDistricts = useCallback(() => structuresApi.getDistricts(), []);
+  const { data: districts } = useApiData<any>({ fetchFn: fetchDistricts });
+  const districtNames = districts.map((d: any) => d.name);
 
   const columns = [
     { key: 'card_serial', label: language === 'fr' ? 'N° Serie CG' : 'Card Serial' },
@@ -70,7 +73,7 @@ const CardCirculation = () => {
         title={language === 'fr' ? 'Liste des Cartes en Circulation' : 'Cards in Circulation List'}
         onView={(row) => { setSelectedRow(row); setShowViewModal(true); }}
         filters={[
-          { key: 'district', label: 'District', type: 'select', options: ['Alger', 'Oran', 'Constantine', 'Annaba', 'Setif'] },
+          { key: 'district', label: 'District', type: 'select', options: districtNames },
           { key: 'status', label: language === 'fr' ? 'Etat' : 'Status', type: 'select', options: ['en_circulation', 'defectueux', 'expire', 'perdu', 'vole'] },
           { key: 'structure_name', label: language === 'fr' ? 'Structure' : 'Structure', type: 'text' },
           { key: 'assignment_date', label: language === 'fr' ? 'Date Attribution' : 'Assignment Date', type: 'date' },

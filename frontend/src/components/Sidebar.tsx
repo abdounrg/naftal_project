@@ -61,7 +61,6 @@ const Sidebar = ({ isOpen, onClose }: SidebarProps) => {
       icon: CreditCard,
       children: [
         { label: language === 'fr' ? 'Stock TPE' : 'TPE Stock', path: '/tpe/stock', icon: Package },
-        { label: language === 'fr' ? 'Parc TPE' : 'TPE Fleet', path: '/tpe/fleet', icon: Database },
         { label: language === 'fr' ? 'Maintenance' : 'Maintenance', path: '/tpe/maintenance', icon: Wrench },
         { label: language === 'fr' ? 'Retours' : 'Returns', path: '/tpe/returns', icon: RotateCcw },
         { label: language === 'fr' ? 'Transferts' : 'Transfers', path: '/tpe/transfers', icon: Truck },
