@@ -6,10 +6,13 @@ import { AuthProvider } from './context/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
+import Home from './pages/Home';
 import Dashboard from './pages/Dashboard';
+import RequestUser from './pages/RequestUser';
+import Settings from './pages/Settings';
 import TPEStock from './pages/tpe/TPEStock';
 import TPEMaintenance from './pages/tpe/TPEMaintenance';
-import TPEReturns from './pages/tpe/TPEReturns';
+import TPETracking from './pages/tpe/TPETracking';
 import TPETransfers from './pages/tpe/TPETransfers';
 import TPEReform from './pages/tpe/TPEReform';
 import ChargerStock from './pages/chargers/ChargerStock';
@@ -21,6 +24,7 @@ import CardTransfers from './pages/cards/CardTransfers';
 import UserManagement from './pages/admin/UserManagement';
 import StructureManagement from './pages/admin/StructureManagement';
 import AuditLogs from './pages/admin/AuditLogs';
+import StationsWithoutTpe from './pages/StationsWithoutTpe';
 import './App.css';
 
 function AnimatedRoutes() {
@@ -41,12 +45,16 @@ function AnimatedRoutes() {
         <Route path="/login" element={<Login />} />
         
         {/* Protected Routes (Dashboard Layout) */}
+        <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
         <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+        <Route path="/dashboard/stations-without-tpe" element={<ProtectedRoute><StationsWithoutTpe /></ProtectedRoute>} />
+        <Route path="/users/request" element={<ProtectedRoute><RequestUser /></ProtectedRoute>} />
+        <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
         
         {/* TPE Module Routes */}
         <Route path="/tpe/stock" element={<ProtectedRoute><TPEStock /></ProtectedRoute>} />
         <Route path="/tpe/maintenance" element={<ProtectedRoute><TPEMaintenance /></ProtectedRoute>} />
-        <Route path="/tpe/returns" element={<ProtectedRoute><TPEReturns /></ProtectedRoute>} />
+        <Route path="/tpe/track" element={<ProtectedRoute><TPETracking /></ProtectedRoute>} />
         <Route path="/tpe/transfers" element={<ProtectedRoute><TPETransfers /></ProtectedRoute>} />
         <Route path="/tpe/reform" element={<ProtectedRoute><TPEReform /></ProtectedRoute>} />
         
@@ -62,7 +70,7 @@ function AnimatedRoutes() {
         
         {/* Admin Routes */}
         <Route path="/admin/users" element={<ProtectedRoute allowedRoles={['administrator', 'dpe_member']}><UserManagement /></ProtectedRoute>} />
-        <Route path="/admin/structures" element={<ProtectedRoute allowedRoles={['administrator', 'dpe_member']}><StructureManagement /></ProtectedRoute>} />
+        <Route path="/admin/structures" element={<ProtectedRoute><StructureManagement /></ProtectedRoute>} />
         <Route path="/admin/audit-logs" element={<ProtectedRoute allowedRoles={['administrator']}><AuditLogs /></ProtectedRoute>} />
       </Routes>
       </motion.div>

@@ -51,6 +51,13 @@ export class ChargersController {
     ApiResponse.success(res, base);
   });
 
+  static deleteBase = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await ChargersService.deleteBase(id);
+    logAudit(req, { action: AuditAction.delete, module: AuditModule.chargers, target: `base:${id}`, details: `Deleted base id=${id}`, severity: 'warning' as any });
+    ApiResponse.noContent(res);
+  });
+
   // ─── Transfers ───
   static listTransfers = asyncWrapper(async (req: Request, res: Response) => {
     const result = await ChargersService.listTransfers(req.query);
@@ -61,5 +68,18 @@ export class ChargersController {
     const transfer = await ChargersService.createTransfer(req.body);
     logAudit(req, { action: AuditAction.transfer, module: AuditModule.chargers, target: `transfer:${transfer.id}`, details: `Charger transfer created` });
     ApiResponse.created(res, transfer);
+  });
+
+  static updateTransfer = asyncWrapper(async (req: Request, res: Response) => {
+    const transfer = await ChargersService.updateTransfer(parseId(req.params.id), req.body);
+    logAudit(req, { action: AuditAction.update, module: AuditModule.chargers, target: `transfer:${transfer.id}`, details: `Updated charger transfer` });
+    ApiResponse.success(res, transfer);
+  });
+
+  static deleteTransfer = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await ChargersService.deleteTransfer(id);
+    logAudit(req, { action: AuditAction.delete, module: AuditModule.chargers, target: `transfer:${id}`, details: `Deleted charger transfer id=${id}`, severity: 'warning' as any });
+    ApiResponse.noContent(res);
   });
 }

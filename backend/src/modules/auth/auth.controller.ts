@@ -39,4 +39,9 @@ export class AuthController {
     const profile = await AuthService.getProfile(req.user!.id);
     ApiResponse.success(res, profile);
   });
+
+  static createLoginSupportRequest = asyncWrapper(async (req: Request, res: Response) => {
+    const request = await AuthService.createLoginSupportRequest(req.body);
+    ApiResponse.created(res, request, 'Support request sent successfully');
+  });
 }

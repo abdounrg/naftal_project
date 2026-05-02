@@ -4,6 +4,7 @@ import { ArrowRight, Play, Shield, Users, TrendingUp, CheckCircle, CreditCard, I
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { useLanguage } from '../context/LanguageContext';
+import { Mail, Phone, MapPin } from 'lucide-react';
 
 const fadeUp = (delay = 0) => ({
   initial: { opacity: 0, y: 20 },
@@ -125,7 +126,7 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-white dark:bg-gray-900 overflow-x-hidden">
+    <div className="min-h-screen bg-white dark:bg-slate-950 overflow-x-hidden">
       <Navbar scrollY={scrollY} />
       
       {/* Hero Section */}
@@ -143,23 +144,11 @@ const LandingPage = () => {
           />
           {/* Dark gradient overlay for text readability */}
           <div
-            className="absolute inset-0"
-            style={{
-              background: `linear-gradient(
-                to right,
-                rgba(0, 8, 30, 0.93) 0%,
-                rgba(0, 15, 50, 0.87) 35%,
-                rgba(0, 20, 60, 0.55) 65%,
-                rgba(0, 20, 60, 0.3) 100%
-              )`,
-            }}
+            className="absolute inset-0 hero-overlay-gradient"
           />
           {/* Subtle pattern overlay */}
           <div
-            className="absolute inset-0 opacity-[0.03]"
-            style={{
-              backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
-            }}
+            className="absolute inset-0 opacity-[0.03] hero-pattern"
           />
         </div>
 
@@ -174,8 +163,7 @@ const LandingPage = () => {
               {/* Badge */}
               <motion.div
                 {...fadeUp(0)}
-                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10"
-                style={{ background: 'rgba(255, 255, 255, 0.06)', backdropFilter: 'blur(10px)' }}
+                className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-white/10 bg-white/[0.06] backdrop-blur-[10px]"
               >
                 <span className="w-2 h-2 rounded-full bg-[var(--naftal-yellow)]" />
                 <span className="text-sm font-medium text-gray-300">{t('hero.badge')}</span>
@@ -183,7 +171,7 @@ const LandingPage = () => {
 
               {/* Headline */}
               <h1 className="text-4xl sm:text-5xl lg:text-6xl xl:text-7xl font-bold leading-[1.1]">
-                <motion.span {...fadeUp(0.1)} className="block" style={{ color: 'var(--naftal-yellow)' }}>
+                <motion.span {...fadeUp(0.1)} className="block text-[var(--naftal-yellow)]">
                   {t('hero.title').split(' ')[0]}
                 </motion.span>
                 <motion.span {...fadeUp(0.18)} className="block text-white">
@@ -206,8 +194,7 @@ const LandingPage = () => {
                   whileHover={{ y: -3, boxShadow: '0 12px 40px rgba(0, 71, 171, 0.5)' }}
                   whileTap={{ scale: 0.97 }}
                   transition={{ duration: 0.2 }}
-                  className="group flex items-center gap-2 px-8 py-4 rounded-xl text-white font-semibold text-base"
-                  style={{ background: 'var(--naftal-blue)' }}
+                  className="group flex items-center gap-2 px-8 py-4 rounded-xl text-white font-semibold text-base bg-blue-500"
                 >
                   {t('hero.cta.primary')}
                   <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
@@ -216,8 +203,7 @@ const LandingPage = () => {
                   whileHover={{ y: -3 }}
                   whileTap={{ scale: 0.97 }}
                   transition={{ duration: 0.2 }}
-                  className="group flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-base border-2 border-white/20 text-white hover:border-white/40"
-                  style={{ background: 'rgba(255, 255, 255, 0.05)', backdropFilter: 'blur(10px)' }}
+                  className="group flex items-center gap-2 px-8 py-4 rounded-xl font-semibold text-base border-2 border-white/20 text-white hover:border-white/40 bg-white/5 backdrop-blur-[10px]"
                 >
                   <Play className="w-5 h-5" />
                   {t('hero.cta.secondary')}
@@ -242,13 +228,12 @@ const LandingPage = () => {
             </div>
 
             {/* Right Content - Dashboard Preview */}
-            <motion.div {...fadeUp(0.28)} style={{ perspective: '1000px' }}>
+            <motion.div {...fadeUp(0.28)} className="perspective-1000">
               <div className="relative">
                 {/* Main Dashboard Image */}
                 <div
                   ref={tiltRef}
-                  className="relative rounded-2xl overflow-hidden shadow-2xl"
-                  style={{ boxShadow: '0 25px 80px rgba(0, 0, 0, 0.4)', transition: 'transform 0.1s ease-out' }}
+                  className="relative rounded-2xl overflow-hidden hero-dashboard-shadow transition-transform duration-100 ease-out"
                   onMouseMove={handleTiltMove}
                   onMouseLeave={handleTiltLeave}
                 >
@@ -261,15 +246,10 @@ const LandingPage = () => {
                   initial={{ opacity: 0, scale: 0.75 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.7, duration: 0.5, ease: [0.175, 0.885, 0.32, 1.275] }}
-                  className="absolute -top-4 -right-4 rounded-xl p-4"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                  }}
+                  className="absolute -top-4 -right-4 rounded-xl p-4 glass-card"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(40, 167, 69, 0.2)' }}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-green-500/20">
                       <CheckCircle className="w-5 h-5 text-[var(--naftal-success)]" />
                     </div>
                     <div>
@@ -284,15 +264,10 @@ const LandingPage = () => {
                   initial={{ opacity: 0, scale: 0.75 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ delay: 0.85, duration: 0.5, ease: [0.175, 0.885, 0.32, 1.275] }}
-                  className="absolute -bottom-4 -left-4 rounded-xl p-4"
-                  style={{
-                    background: 'rgba(255, 255, 255, 0.1)',
-                    backdropFilter: 'blur(16px)',
-                    border: '1px solid rgba(255, 255, 255, 0.15)',
-                  }}
+                  className="absolute -bottom-4 -left-4 rounded-xl p-4 glass-card"
                 >
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: 'rgba(0, 71, 171, 0.25)' }}>
+                    <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[rgba(0,71,171,0.25)]">
                       <TrendingUp className="w-5 h-5 text-blue-400" />
                     </div>
                     <div>
@@ -308,15 +283,12 @@ const LandingPage = () => {
 
         {/* Bottom Gradient Fade - seamless into next section */}
         <div
-          className="absolute bottom-0 left-0 right-0 h-64 pointer-events-none"
-          style={{
-            background: 'linear-gradient(to bottom, transparent 0%, #0a1628 100%)',
-          }}
+          className="absolute bottom-0 left-0 right-0 h-64 pointer-events-none gradient-fade-bottom"
         />
       </section>
 
       {/* Features Section */}
-      <section className="relative pt-24 pb-24 overflow-hidden" style={{ background: '#0a1628' }}>
+      <section className="relative pt-24 pb-24 overflow-hidden bg-dark-section">
         <div className="absolute top-10 right-10 w-6 h-6 rounded-full bg-[var(--naftal-yellow)] opacity-30" />
         <div className="absolute bottom-20 left-20 w-4 h-4 rounded-full bg-[var(--naftal-yellow)] opacity-20" />
         
@@ -340,19 +312,18 @@ const LandingPage = () => {
                 viewport={{ once: true, margin: '-30px' }}
                 transition={{ delay: i * 0.08, duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
                 whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                className="group relative bg-gray-800/60 backdrop-blur-sm rounded-2xl p-8 border border-gray-700/50 hover:shadow-2xl hover:shadow-blue-900/20 hover:border-[var(--naftal-yellow)]/30"
-                style={{ willChange: 'transform' }}
+                className="group relative bg-slate-800/60 backdrop-blur-sm rounded-2xl p-8 border border-slate-700/50 hover:shadow-2xl hover:shadow-blue-900/20 hover:border-blue-500/30 will-change-transform"
               >
-                <div className={`w-14 h-14 rounded-xl ${feature.bgColor} flex items-center justify-center mb-6 transition-transform duration-200 group-hover:scale-110 ring-2 ring-[var(--naftal-yellow)]/30`}>
+                <div className={`w-14 h-14 rounded-xl ${feature.bgColor} flex items-center justify-center mb-6 transition-transform duration-200 group-hover:scale-110 ring-2 ring-blue-500/20`}>
                   <feature.icon className={`w-7 h-7 bg-gradient-to-br ${feature.color} text-white rounded-lg p-1.5`} />
                 </div>
-                <h3 className="text-xl font-bold text-white mb-3 group-hover:text-[var(--naftal-yellow)] transition-colors duration-200">
+                <h3 className="text-xl font-bold text-white mb-3 group-hover:text-amber-400 transition-colors duration-200">
                   {feature.title}
                 </h3>
                 <p className="text-gray-400 leading-relaxed">
                   {feature.description}
                 </p>
-                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--naftal-yellow)] to-[var(--naftal-blue)] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-b-2xl" style={{ transformOrigin: 'left' }} />
+                <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-[var(--naftal-yellow)] to-[var(--naftal-blue)] transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300 rounded-b-2xl origin-left" />
               </motion.div>
             ))}
           </div>
@@ -360,7 +331,7 @@ const LandingPage = () => {
       </section>
 
       {/* Modules Section */}
-      <section id="modules" className="relative py-24 overflow-hidden" style={{ background: 'linear-gradient(to bottom, #0a1628 0%, #0d1b30 50%, #0a1628 100%)' }}>
+      <section id="modules" className="relative py-24 overflow-hidden bg-dark-gradient-section">
         <div className="absolute top-20 left-10 w-5 h-5 rounded-full bg-[var(--naftal-yellow)] opacity-25" />
         
         <motion.div {...sectionReveal} className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -383,13 +354,12 @@ const LandingPage = () => {
                 viewport={{ once: true, margin: '-30px' }}
                 transition={{ delay: i * 0.1, duration: 0.45, ease: [0.4, 0, 0.2, 1] }}
                 whileHover={{ y: -6, transition: { duration: 0.2 } }}
-                className="group bg-gray-800/60 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border border-gray-700/50 hover:shadow-2xl hover:shadow-blue-900/20 hover:border-[var(--naftal-yellow)]/30"
-                style={{ willChange: 'transform' }}
+                className="group bg-slate-800/60 backdrop-blur-sm rounded-3xl overflow-hidden shadow-xl border border-slate-700/50 hover:shadow-2xl hover:shadow-blue-900/20 hover:border-blue-500/30 will-change-transform"
               >
                 <div className="relative h-48 overflow-hidden">
                   <img src={module.image} alt={module.title} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                   <div className={`absolute inset-0 bg-gradient-to-br ${module.color} opacity-10`} />
-                  <div className="absolute bottom-4 left-4 bg-gray-900/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border-l-4 border-[var(--naftal-yellow)]">
+                  <div className="absolute bottom-4 left-4 bg-slate-900/90 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg border-l-4 border-amber-400">
                     <p className="text-xl font-bold text-white">{module.stats.value}</p>
                     <p className="text-xs text-gray-400">{module.stats.label}</p>
                   </div>
@@ -412,7 +382,7 @@ const LandingPage = () => {
       </section>
 
       {/* Contact Section */}
-      <section className="relative py-24 overflow-hidden" style={{ background: 'linear-gradient(135deg, #0a1628 0%, #002a66 50%, #0047AB 100%)' }}>
+      <section className="relative py-24 overflow-hidden bg-naftal-contact-section">
         <div className="absolute inset-0 overflow-hidden">
           <div className="absolute top-10 left-10 w-32 h-32 rounded-full bg-[var(--naftal-yellow)] opacity-10" />
           <div className="absolute bottom-20 right-20 w-48 h-48 rounded-full bg-[var(--naftal-yellow)] opacity-5" />
@@ -430,9 +400,9 @@ const LandingPage = () => {
 
           <div className="grid sm:grid-cols-3 gap-6 max-w-3xl mx-auto">
             {[
-              { icon: 'email', title: t('cta.email'), content: 'contact@naftal-gap.dz' },
-              { icon: 'phone', title: t('cta.phone'), content: '+213 23 XX XX XX' },
-              { icon: 'address', title: t('cta.address'), content: 'Alger, Algerie' },
+              { icon: Mail, title: t('cta.email'), content: 'contact@naftal-gap.dz' },
+              { icon: Phone, title: t('cta.phone'), content: '+213 23 XX XX XX' },
+              { icon: MapPin, title: t('cta.address'), content: 'Naftal, Route des Dunes, BP 73 Chéraga, Alger' },
             ].map((contact, i) => (
               <motion.div
                 key={contact.title}
@@ -444,7 +414,7 @@ const LandingPage = () => {
                 className="group flex flex-col items-center text-center gap-3 p-6 rounded-2xl bg-white/10 backdrop-blur-sm border border-white/20 hover:bg-white/20 hover:border-yellow-400/60"
               >
                 <div className="w-12 h-12 rounded-xl bg-yellow-400/20 flex items-center justify-center transition-transform duration-200 group-hover:scale-110">
-                  <span className="text-[var(--naftal-yellow)] text-xl">{contact.icon === 'email' ? '@' : contact.icon === 'phone' ? '#' : '$'}</span>
+                  <contact.icon className="w-6 h-6 text-[var(--naftal-yellow)]" />
                 </div>
                 <div>
                   <p className="text-sm text-blue-200 mb-1">{contact.title}</p>

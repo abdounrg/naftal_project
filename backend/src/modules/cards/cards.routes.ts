@@ -3,7 +3,7 @@ import { CardsController } from './cards.controller';
 import { authenticate } from '../../middleware/auth';
 import { allRoles, dpeAndAbove, districtAndAbove } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
-import { createCardSchema, updateCardSchema, cardListQuerySchema, createCardMonitoringSchema, updateCardMonitoringSchema, createCardTransferSchema } from './cards.validators';
+import { createCardSchema, updateCardSchema, cardListQuerySchema, createCardMonitoringSchema, updateCardMonitoringSchema, createCardTransferSchema, updateCardTransferSchema } from './cards.validators';
 
 const router = Router();
 
@@ -23,9 +23,12 @@ router.get('/circulation', allRoles, validate(cardListQuerySchema, 'query'), Car
 router.get('/monitoring', allRoles, CardsController.listMonitoring);
 router.post('/monitoring', districtAndAbove, validate(createCardMonitoringSchema), CardsController.createMonitoring);
 router.put('/monitoring/:id', districtAndAbove, validate(updateCardMonitoringSchema), CardsController.updateMonitoring);
+router.delete('/monitoring/:id', districtAndAbove, CardsController.deleteMonitoring);
 
 // Transfers
 router.get('/transfers', allRoles, CardsController.listTransfers);
 router.post('/transfers', dpeAndAbove, validate(createCardTransferSchema), CardsController.createTransfer);
+router.put('/transfers/:id', dpeAndAbove, validate(updateCardTransferSchema), CardsController.updateTransfer);
+router.delete('/transfers/:id', dpeAndAbove, CardsController.deleteTransfer);
 
 export { router as cardsRoutes };

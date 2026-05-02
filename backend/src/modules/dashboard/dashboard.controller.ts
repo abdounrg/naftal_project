@@ -13,4 +13,9 @@ export class DashboardController {
     const distribution = await DashboardService.getTpeDistribution();
     ApiResponse.success(res, distribution);
   });
+
+  static getStationsWithoutTpe = asyncWrapper(async (_req: Request, res: Response) => {
+    const stations = await DashboardService.getStationsWithoutTpe();
+    ApiResponse.success(res, stations);
+  });
 }

@@ -29,16 +29,16 @@ const AuditLogs = () => {
   const [selectedLog, setSelectedLog] = useState<AuditLog | null>(null);
 
   const actionLabels: Record<ActionType, { fr: string; en: string; icon: typeof Activity; color: string }> = {
-    login:    { fr: 'Connexion',    en: 'Login',     icon: LogIn,           color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' },
-    logout:   { fr: 'Deconnexion',  en: 'Logout',    icon: LogOut,          color: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200' },
-    create:   { fr: 'Creation',     en: 'Create',    icon: UserPlus,        color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
-    update:   { fr: 'Modification', en: 'Update',    icon: Edit,            color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
-    delete:   { fr: 'Suppression',  en: 'Delete',    icon: Trash2,          color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
-    view:     { fr: 'Consultation', en: 'View',      icon: Eye,             color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' },
-    export_data:   { fr: 'Export',       en: 'Export',     icon: Download,        color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200' },
-    import_data:   { fr: 'Import',       en: 'Import',     icon: Upload,          color: 'bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200' },
-    transfer: { fr: 'Transfert',    en: 'Transfer',  icon: ArrowLeftRight,  color: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200' },
-    settings: { fr: 'Parametres',   en: 'Settings',  icon: Settings,        color: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200' },
+    login:    { fr: 'Connexion',    en: 'Login',     icon: LogIn,           color: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400' },
+    logout:   { fr: 'Deconnexion',  en: 'Logout',    icon: LogOut,          color: 'bg-gray-500/10 text-gray-500 dark:text-gray-400' },
+    create:   { fr: 'Creation',     en: 'Create',    icon: UserPlus,        color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+    update:   { fr: 'Modification', en: 'Update',    icon: Edit,            color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+    delete:   { fr: 'Suppression',  en: 'Delete',    icon: Trash2,          color: 'bg-red-500/10 text-red-600 dark:text-red-400' },
+    view:     { fr: 'Consultation', en: 'View',      icon: Eye,             color: 'bg-purple-500/10 text-purple-600 dark:text-purple-400' },
+    export_data:   { fr: 'Export',       en: 'Export',     icon: Download,        color: 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400' },
+    import_data:   { fr: 'Import',       en: 'Import',     icon: Upload,          color: 'bg-teal-500/10 text-teal-600 dark:text-teal-400' },
+    transfer: { fr: 'Transfert',    en: 'Transfer',  icon: ArrowLeftRight,  color: 'bg-orange-500/10 text-orange-600 dark:text-orange-400' },
+    settings: { fr: 'Parametres',   en: 'Settings',  icon: Settings,        color: 'bg-cyan-500/10 text-cyan-600 dark:text-cyan-400' },
   };
 
   const moduleLabels: Record<ModuleType, { fr: string; en: string }> = {
@@ -52,9 +52,9 @@ const AuditLogs = () => {
   };
 
   const severityLabels: Record<SeverityType, { fr: string; en: string; color: string }> = {
-    info:     { fr: 'Info',      en: 'Info',     color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200' },
-    warning:  { fr: 'Attention', en: 'Warning',  color: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200' },
-    critical: { fr: 'Critique',  en: 'Critical', color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' },
+    info:     { fr: 'Info',      en: 'Info',     color: 'bg-blue-500/10 text-blue-600 dark:text-blue-400' },
+    warning:  { fr: 'Attention', en: 'Warning',  color: 'bg-amber-500/10 text-amber-600 dark:text-amber-400' },
+    critical: { fr: 'Critique',  en: 'Critical', color: 'bg-red-500/10 text-red-600 dark:text-red-400' },
   };
 
   const fetchAuditLogs = useCallback(() => auditLogsApi.getAll({ per_page: 1000 }), []);
@@ -76,11 +76,11 @@ const AuditLogs = () => {
       label: language === 'fr' ? 'Role' : 'Role',
       render: (value: string) => {
         const roleColors: Record<string, string> = {
-          administrator:   'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-          dpe_member:      'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-          district_member: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-          agency_member:   'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-          antenna_member:  'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+          administrator:   'bg-red-500/10 text-red-600 dark:text-red-400',
+          dpe_member:      'bg-blue-500/10 text-blue-600 dark:text-blue-400',
+          district_member: 'bg-purple-500/10 text-purple-600 dark:text-purple-400',
+          agency_member:   'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400',
+          antenna_member:  'bg-orange-500/10 text-orange-600 dark:text-orange-400',
         };
         const roleNames: Record<string, { fr: string; en: string }> = {
           administrator:   { fr: 'Admin',    en: 'Admin' },
@@ -90,7 +90,7 @@ const AuditLogs = () => {
           antenna_member:  { fr: 'Antenne',  en: 'Antenna' },
         };
         return (
-          <span className={`px-2 py-1 rounded-full text-xs font-medium ${roleColors[value] || ''}`}>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${roleColors[value] || ''}`}>
             {language === 'fr' ? roleNames[value]?.fr : roleNames[value]?.en}
           </span>
         );
@@ -102,7 +102,7 @@ const AuditLogs = () => {
       render: (value: ActionType) => {
         const label = actionLabels[value];
         return (
-          <span className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-medium ${label?.color || ''}`}>
+          <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg text-xs font-semibold ${label?.color || ''}`}>
             {label?.icon && <label.icon className="w-3 h-3" />}
             {language === 'fr' ? label?.fr : label?.en}
           </span>
@@ -123,7 +123,7 @@ const AuditLogs = () => {
       key: 'severity',
       label: language === 'fr' ? 'Severite' : 'Severity',
       render: (value: SeverityType) => (
-        <span className={`px-2 py-1 rounded-full text-xs font-medium ${severityLabels[value]?.color || ''}`}>
+        <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold ${severityLabels[value]?.color || ''}`}>
           {language === 'fr' ? severityLabels[value]?.fr : severityLabels[value]?.en}
         </span>
       ),
@@ -170,21 +170,21 @@ const AuditLogs = () => {
       subtitle={language === 'fr' ? 'Historique des activites utilisateur' : 'User activity history'}
     >
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 grid-stagger">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
         {[
-          { label: language === 'fr' ? 'Total Evenements' : 'Total Events', value: String(auditLogs.length), color: 'bg-blue-500', icon: Activity },
-          { label: language === 'fr' ? 'Aujourd\'hui' : 'Today', value: String(todayLogs.length), color: 'bg-green-500', icon: Activity },
-          { label: language === 'fr' ? 'Evenements Critiques' : 'Critical Events', value: String(criticalLogs.length), color: 'bg-red-500', icon: Shield },
-          { label: language === 'fr' ? 'Modifications' : 'Modifications', value: String(modificationLogs.length), color: 'bg-yellow-500', icon: Edit },
+          { label: language === 'fr' ? 'Total Evenements' : 'Total Events', value: String(auditLogs.length), icon: Activity, color: 'text-blue-500', bg: 'bg-blue-500/10' },
+          { label: language === 'fr' ? 'Aujourd\'hui' : 'Today', value: String(todayLogs.length), icon: Activity, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+          { label: language === 'fr' ? 'Evenements Critiques' : 'Critical Events', value: String(criticalLogs.length), icon: Shield, color: 'text-red-500', bg: 'bg-red-500/10' },
+          { label: language === 'fr' ? 'Modifications' : 'Modifications', value: String(modificationLogs.length), icon: Edit, color: 'text-amber-500', bg: 'bg-amber-500/10' },
         ].map((stat, index) => (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 stat-card">
+          <div key={index} className="bg-white dark:bg-slate-900 rounded-2xl p-4 border border-gray-100 dark:border-slate-800/60 hover:shadow-md hover:border-gray-200 dark:hover:border-gray-600 transition-all duration-200">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-lg ${stat.color} bg-opacity-10 flex items-center justify-center`}>
-                <stat.icon className={`w-5 h-5 ${stat.color.replace('bg-', 'text-')}`} />
+              <div className={`w-10 h-10 rounded-xl ${stat.bg} flex items-center justify-center flex-shrink-0`}>
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
-              <div>
-                <p className="text-xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
-                <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
+              <div className="min-w-0">
+                <p className="text-2xl font-bold text-gray-900 dark:text-white leading-none">{stat.value}</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5 truncate">{stat.label}</p>
               </div>
             </div>
           </div>
@@ -194,14 +194,16 @@ const AuditLogs = () => {
       {/* Recent Critical / Warning Activity */}
       <div className="grid lg:grid-cols-2 gap-6 mb-6">
         {/* Recent Logins */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <LogIn className="w-5 h-5 text-green-500" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800/60 p-6">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center">
+              <LogIn className="w-4 h-4 text-emerald-500" />
+            </div>
             {language === 'fr' ? 'Connexions Recentes' : 'Recent Logins'}
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {loginLogs.slice(0, 5).map((log) => (
-              <div key={log.id} className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-gray-700/50">
+              <div key={log.id} className="flex items-center justify-between p-3 rounded-xl bg-gray-50/80 dark:bg-slate-800/30 border border-gray-100 dark:border-slate-800/60/40 hover:border-gray-200 dark:hover:border-gray-600 transition-colors">
                 <div>
                   <p className="text-sm font-medium text-gray-900 dark:text-white">{log.userName}</p>
                   <p className="text-xs text-gray-500 dark:text-gray-400">{log.ipAddress}</p>
@@ -215,14 +217,16 @@ const AuditLogs = () => {
         </div>
 
         {/* Critical Events */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700 p-6">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
-            <Shield className="w-5 h-5 text-red-500" />
+        <div className="bg-white dark:bg-slate-900 rounded-2xl border border-gray-100 dark:border-slate-800/60 p-6">
+          <h3 className="text-base font-semibold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-red-500/10 flex items-center justify-center">
+              <Shield className="w-4 h-4 text-red-500" />
+            </div>
             {language === 'fr' ? 'Evenements Critiques' : 'Critical Events'}
           </h3>
-          <div className="space-y-3">
+          <div className="space-y-2">
             {criticalLogs.length > 0 ? criticalLogs.map((log) => (
-              <div key={log.id} className="p-3 rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800">
+              <div key={log.id} className="p-3 rounded-xl bg-red-50 dark:bg-red-900/10 border border-red-100 dark:border-red-800/40">
                 <div className="flex items-center justify-between mb-1">
                   <p className="text-sm font-medium text-red-800 dark:text-red-200">{log.userName}</p>
                   <span className="text-xs text-red-600 dark:text-red-400 font-mono">
@@ -245,25 +249,33 @@ const AuditLogs = () => {
         columns={columns}
         data={auditLogs}
         title={language === 'fr' ? 'Historique Complet' : 'Full History'}
+        section="audit_logs"
         onView={(row) => { setSelectedLog(row); setShowViewModal(true); }}
         filters={filters}
       />
 
       {/* View Log Detail Modal */}
       {showViewModal && selectedLog && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay-enter">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-lg w-full max-h-[90vh] overflow-y-auto modal-content-enter">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
-                {language === 'fr' ? 'Detail de l\'Evenement' : 'Event Detail'}
-              </h3>
-              <button onClick={() => { setShowViewModal(false); setSelectedLog(null); }} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
-                <X className="w-5 h-5" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-gray-200/50 dark:border-slate-800/60/50 max-w-lg w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-100 dark:border-slate-800/60 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center">
+                  <Activity className="w-5 h-5 text-blue-500" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
+                    {language === 'fr' ? 'Detail de l\'Evenement' : 'Event Detail'}
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">#{selectedLog.id}</p>
+                </div>
+              </div>
+              <button aria-label="Close" onClick={() => { setShowViewModal(false); setSelectedLog(null); }} className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-xl transition-colors">
+                <X className="w-5 h-5 text-gray-400" />
               </button>
             </div>
-            <div className="p-6 space-y-4">
+            <div className="p-6 space-y-3">
               {[
-                { label: 'ID', value: `#${selectedLog.id}` },
                 { label: language === 'fr' ? 'Date & Heure' : 'Date & Time', value: selectedLog.createdAt ? new Date(selectedLog.createdAt).toLocaleString(language === 'fr' ? 'fr-FR' : 'en-GB') : '-' },
                 { label: language === 'fr' ? 'Utilisateur' : 'User', value: selectedLog.userName },
                 { label: language === 'fr' ? 'Role' : 'Role', value: selectedLog.userRole },
@@ -274,16 +286,16 @@ const AuditLogs = () => {
                 { label: language === 'fr' ? 'Adresse IP' : 'IP Address', value: selectedLog.ipAddress },
                 { label: language === 'fr' ? 'Details' : 'Details', value: selectedLog.details },
               ].map((row, index) => (
-                <div key={index} className="flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4">
-                  <span className="text-sm font-medium text-gray-500 dark:text-gray-400 sm:w-32 shrink-0">{row.label}</span>
-                  <span className="text-sm text-gray-900 dark:text-white">{row.value}</span>
+                <div key={index} className="flex items-start justify-between py-2.5 border-b border-gray-50 dark:border-slate-800/60/40 last:border-0">
+                  <span className="text-sm font-medium text-gray-400 dark:text-gray-500 shrink-0">{row.label}</span>
+                  <span className="text-sm text-gray-900 dark:text-white text-right max-w-[60%] truncate">{row.value}</span>
                 </div>
               ))}
             </div>
-            <div className="p-6 border-t border-gray-200 dark:border-gray-700 flex justify-end">
+            <div className="p-6 border-t border-gray-100 dark:border-slate-800/60 flex justify-end">
               <button
                 onClick={() => { setShowViewModal(false); setSelectedLog(null); }}
-                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
+                className="px-4 py-2.5 border border-gray-200 dark:border-slate-700 rounded-xl text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
                 {language === 'fr' ? 'Fermer' : 'Close'}
               </button>

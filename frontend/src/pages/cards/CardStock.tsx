@@ -2,11 +2,12 @@ import { useState, useCallback, useEffect, useRef } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
 import DataTable from '../../components/DataTable';
 import { useLanguage } from '../../context/LanguageContext';
-import { cardsApi, structuresApi } from '../../lib/api';
+import { cardsApi, structuresApi, tpeApi } from '../../lib/api';
 import { useApiData } from '../../hooks/useApiData';
+import { DatePicker } from '../../components/ui/date-picker';
 
-const inputClass = "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--naftal-blue)]";
-const readonlyClass = "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-sm text-gray-900 dark:text-white cursor-not-allowed";
+const inputClass = "w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+const readonlyClass = "w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-100 dark:bg-gray-600 text-sm text-gray-900 dark:text-white cursor-not-allowed";
 
 const CardStock = () => {
   const { language } = useLanguage();
@@ -25,6 +26,9 @@ const CardStock = () => {
   // Station lookup state
   const [stationName, setStationName] = useState('');
   const [stationLookupStatus, setStationLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not-found'>('idle');
+
+  // Available TPEs for selected structure
+  const [availableTpes, setAvailableTpes] = useState<{ id: number; serial: string; model: string; status: string; station?: { id: number; code: string; name: string } }[]>([]);
 
   const emptyForm = {
     structure_code: '', station_code: '',
@@ -55,11 +59,16 @@ const CardStock = () => {
         if (data) {
           setStructureName(data.name); setStructureDistrict(data.district?.name || '');
           setAvailableStations(data.stations || []); setStructureLookupStatus('found');
+          // Fetch available TPEs for this structure
+          try {
+            const tpeRes = await tpeApi.getStockByStructure(code);
+            setAvailableTpes(tpeRes.data?.data || []);
+          } catch { setAvailableTpes([]); }
         } else {
-          setStructureName(''); setStructureDistrict(''); setAvailableStations([]); setStructureLookupStatus('not-found');
+          setStructureName(''); setStructureDistrict(''); setAvailableStations([]); setAvailableTpes([]); setStructureLookupStatus('not-found');
         }
       } catch {
-        setStructureName(''); setStructureDistrict(''); setAvailableStations([]); setStructureLookupStatus('not-found');
+        setStructureName(''); setStructureDistrict(''); setAvailableStations([]); setAvailableTpes([]); setStructureLookupStatus('not-found');
       }
     }, 400);
     return () => clearTimeout(structureTimerRef.current);
@@ -86,7 +95,7 @@ const CardStock = () => {
   }, [formData.station_code, availableStations]);
 
   const resetFormState = () => {
-    setStructureName(''); setStructureDistrict(''); setAvailableStations([]);
+    setStructureName(''); setStructureDistrict(''); setAvailableStations([]); setAvailableTpes([]);
     setStructureLookupStatus('idle'); setStationName(''); setStationLookupStatus('idle');
     setFormError('');
   };
@@ -97,11 +106,11 @@ const CardStock = () => {
 
   const openEditModal = (row: any) => {
     setIsEditing(true); setSelectedRow(row); resetFormState();
-    const stCode = row.station?.structure?.code || row.structure_code || '';
-    const staCode = row.station?.code || row.station_code || '';
-    setStructureName(row.station?.structure?.name || row.structure_name || '');
-    setStructureDistrict(row.station?.structure?.district?.name || row.district || '');
-    setStationName(row.station?.name || row.station_name || '');
+    const stCode = row.structure_code || '';
+    const staCode = row.station_code || '';
+    setStructureName(row.structure_name || '');
+    setStructureDistrict(row.district || '');
+    setStationName(row.station_name || '');
     if (stCode) setStructureLookupStatus('found');
     if (staCode) setStationLookupStatus('found');
     setFormData({
@@ -132,13 +141,16 @@ const CardStock = () => {
     { key: 'structure_name', label: language === 'fr' ? 'Structure' : 'Structure' },
     { key: 'station_name', label: language === 'fr' ? 'Station' : 'Station' },
     { key: 'reception_date', label: language === 'fr' ? 'Date Reception' : 'Reception Date' },
-    {
-      key: 'delivery_date',
-      label: language === 'fr' ? 'Date Attribution' : 'Assignment Date',
-      render: (value: string | null) => value || <span className="text-yellow-600">{language === 'fr' ? 'En attente' : 'Pending'}</span>
-    },
     { key: 'expiration_date', label: language === 'fr' ? 'Date Expiration' : 'Expiration Date' },
-    { key: 'depreciation', label: language === 'fr' ? 'Amortissement' : 'Depreciation' },
+    {
+      key: 'amortissement',
+      label: language === 'fr' ? 'Amortissement' : 'Depreciation',
+      render: (value: string) => {
+        if (!value) return <span className="text-gray-400">-</span>;
+        if (value === 'Expiré') return <span className="text-red-600 font-medium">{language === 'fr' ? 'Expiré' : 'Expired'}</span>;
+        return <span className="text-green-600 font-medium">{value}</span>;
+      }
+    },
   ];
 
   return (
@@ -149,11 +161,11 @@ const CardStock = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 grid-stagger">
         {[
           { label: language === 'fr' ? 'Total Stock' : 'Total Stock', value: String(stockData.length), color: 'bg-pink-500' },
-          { label: language === 'fr' ? 'En Attente' : 'Pending', value: String(stockData.filter((d: any) => !d.delivery_date).length), color: 'bg-yellow-500' },
-          { label: language === 'fr' ? 'Attribuees' : 'Assigned', value: String(stockData.filter((d: any) => d.delivery_date).length), color: 'bg-green-500' },
-          { label: language === 'fr' ? 'Expirees' : 'Expired', value: String(stockData.filter((d: any) => d.expiration_date && new Date(d.expiration_date) < new Date()).length), color: 'bg-red-500' },
+          { label: language === 'fr' ? 'Avec TPE' : 'With TPE', value: String(stockData.filter((d: any) => d.tpe_serial).length), color: 'bg-blue-500' },
+          { label: language === 'fr' ? 'Sans TPE' : 'Without TPE', value: String(stockData.filter((d: any) => !d.tpe_serial).length), color: 'bg-yellow-500' },
+          { label: language === 'fr' ? 'Bientôt Expiré' : 'Expiring Soon', value: String(stockData.filter((d: any) => { if (!d.expiration_date) return false; const diff = (new Date(d.expiration_date).getTime() - Date.now()) / (1000*60*60*24); return diff > 0 && diff <= 90; }).length), color: 'bg-orange-500' },
         ].map((stat, index) => (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 stat-card">
+          <div key={index} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-slate-800/60 stat-card">
             <p className="text-xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
           </div>
@@ -164,6 +176,7 @@ const CardStock = () => {
         columns={columns}
         data={stockData}
         title={language === 'fr' ? 'Liste des Cartes en Stock' : 'Cards in Stock List'}
+        section="card_stock"
         onAdd={openAddModal}
         onEdit={openEditModal}
         onView={(row) => { setSelectedRow(row); setShowViewModal(true); }}
@@ -178,8 +191,8 @@ const CardStock = () => {
 
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay-enter">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800/60 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {isEditing ? (language === 'fr' ? 'Modifier la Carte' : 'Edit Card') : (language === 'fr' ? 'Ajouter une Carte de Gestion' : 'Add Management Card')}
               </h3>
@@ -203,11 +216,11 @@ const CardStock = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Nom Structure' : 'Structure Name'}</label>
-                    <input type="text" readOnly tabIndex={-1} value={structureName} className={readonlyClass} />
+                    <input type="text" aria-label="Structure Name" readOnly tabIndex={-1} value={structureName} className={readonlyClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
-                    <input type="text" readOnly tabIndex={-1} value={structureDistrict} className={readonlyClass} />
+                    <input type="text" aria-label="District" readOnly tabIndex={-1} value={structureDistrict} className={readonlyClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -226,7 +239,7 @@ const CardStock = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Nom Station' : 'Station Name'}</label>
-                    <input type="text" readOnly tabIndex={-1} value={stationName} className={readonlyClass} />
+                    <input type="text" aria-label="Station Name" readOnly tabIndex={-1} value={stationName} className={readonlyClass} />
                   </div>
                 </div>
               </div>
@@ -238,11 +251,20 @@ const CardStock = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'N° Serie Carte' : 'Card Serial #'} *</label>
-                    <input type="text" required value={formData.card_serial} onChange={e => setFormData(prev => ({ ...prev, card_serial: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="Card Serial" required value={formData.card_serial} onChange={e => setFormData(prev => ({ ...prev, card_serial: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'N° Serie TPE' : 'TPE Serial #'}</label>
-                    <input type="text" value={formData.tpe_serial} onChange={e => setFormData(prev => ({ ...prev, tpe_serial: e.target.value }))} className={inputClass} />
+                    {availableTpes.length > 0 ? (
+                      <select aria-label="TPE Serial" value={formData.tpe_serial} onChange={e => setFormData(prev => ({ ...prev, tpe_serial: e.target.value }))} className={inputClass}>
+                        <option value="">{language === 'fr' ? 'Selectionner un TPE...' : 'Select a TPE...'}</option>
+                        {availableTpes.filter(t => t.status === 'en_service').map(t => (
+                          <option key={t.id} value={t.serial}>{t.serial} ({t.model}{t.station ? ` - ${t.station.name}` : ''})</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <input type="text" aria-label="TPE Serial" value={formData.tpe_serial} onChange={e => setFormData(prev => ({ ...prev, tpe_serial: e.target.value }))} placeholder={language === 'fr' ? 'Entrer N° serie TPE' : 'Enter TPE serial'} className={inputClass} />
+                    )}
                   </div>
                 </div>
               </div>
@@ -252,25 +274,25 @@ const CardStock = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Date Reception' : 'Reception Date'}</label>
-                    <input type="date" value={formData.reception_date} onChange={e => setFormData(prev => ({ ...prev, reception_date: e.target.value }))} className={inputClass} />
+                    <DatePicker value={formData.reception_date} onChange={v => setFormData(prev => ({ ...prev, reception_date: v }))} placeholder={language === 'fr' ? 'Selectionner' : 'Select date'} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Date Attribution' : 'Assignment Date'}</label>
-                    <input type="date" value={formData.delivery_date} onChange={e => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))} className={inputClass} />
+                    <DatePicker value={formData.delivery_date} onChange={v => setFormData(prev => ({ ...prev, delivery_date: v }))} placeholder={language === 'fr' ? 'Selectionner' : 'Select date'} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Date Expiration' : 'Expiration Date'}</label>
-                    <input type="date" value={formData.expiration_date} onChange={e => setFormData(prev => ({ ...prev, expiration_date: e.target.value }))} className={inputClass} />
+                    <DatePicker value={formData.expiration_date} onChange={v => setFormData(prev => ({ ...prev, expiration_date: v }))} placeholder={language === 'fr' ? 'Selectionner' : 'Select date'} />
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-800/60">
                 {formError && <p className="flex-1 text-sm text-red-600 dark:text-red-400 self-center">{formError}</p>}
-                <button type="button" onClick={() => { setShowAddModal(false); setIsEditing(false); }} className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <button type="button" onClick={() => { setShowAddModal(false); setIsEditing(false); }} className="px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                   {language === 'fr' ? 'Annuler' : 'Cancel'}
                 </button>
-                <button type="submit" className="px-6 py-2 bg-[var(--naftal-blue)] text-white rounded-lg text-sm font-medium hover:bg-[var(--naftal-dark-blue)]">
+                <button type="submit" className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">
                   {language === 'fr' ? 'Enregistrer' : 'Save'}
                 </button>
               </div>
@@ -281,14 +303,27 @@ const CardStock = () => {
 
       {showViewModal && selectedRow && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800/60 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{language === 'fr' ? 'Details Carte' : 'Card Details'}</h3>
               <button onClick={() => setShowViewModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
-              {Object.entries(selectedRow).filter(([k]) => k !== 'id').map(([key, value]) => (
-                <div key={key}><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{key.replace(/_/g, ' ')}</p><p className="text-sm font-medium text-gray-900 dark:text-white">{String(value ?? '-')}</p></div>
+              {[
+                { label: language === 'fr' ? 'N° Serie Carte' : 'Card Serial', value: selectedRow.card_serial },
+                { label: language === 'fr' ? 'N° Serie TPE' : 'TPE Serial', value: selectedRow.tpe_serial },
+                { label: 'District', value: selectedRow.district },
+                { label: language === 'fr' ? 'Structure' : 'Structure', value: selectedRow.structure_name },
+                { label: language === 'fr' ? 'Code Station' : 'Station Code', value: selectedRow.station_code },
+                { label: language === 'fr' ? 'Station' : 'Station', value: selectedRow.station_name },
+                { label: language === 'fr' ? 'Date Reception' : 'Reception Date', value: selectedRow.reception_date },
+                { label: language === 'fr' ? 'Date Expiration' : 'Expiration Date', value: selectedRow.expiration_date },
+                { label: language === 'fr' ? 'Amortissement' : 'Depreciation', value: selectedRow.amortissement },
+              ].map((item, i) => (
+                <div key={i}>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{item.label}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{item.value || '-'}</p>
+                </div>
               ))}
             </div>
           </div>

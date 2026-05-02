@@ -21,13 +21,15 @@ export class CardsController {
 
   static create = asyncWrapper(async (req: Request, res: Response) => {
     const card = await CardsService.create(req.body);
-    logAudit(req, { action: AuditAction.create, module: AuditModule.cards, target: `card:${card.id}`, details: `Created card ${card.cardSerial ?? card.id}` });
+    const cardLabel = card.cardSerial || String(card.id);
+    logAudit(req, { action: AuditAction.create, module: AuditModule.cards, target: `card:${card.id}`, details: `Created card ${cardLabel}` });
     ApiResponse.created(res, card);
   });
 
   static update = asyncWrapper(async (req: Request, res: Response) => {
     const card = await CardsService.update(parseId(req.params.id), req.body);
-    logAudit(req, { action: AuditAction.update, module: AuditModule.cards, target: `card:${card.id}`, details: `Updated card ${card.cardSerial ?? card.id}` });
+    const cardLabel = card.cardSerial || String(card.id);
+    logAudit(req, { action: AuditAction.update, module: AuditModule.cards, target: `card:${card.id}`, details: `Updated card ${cardLabel}` });
     ApiResponse.success(res, card);
   });
 
@@ -60,6 +62,12 @@ export class CardsController {
     ApiResponse.success(res, record);
   });
 
+  static deleteMonitoring = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await CardsService.deleteMonitoring(id);
+    ApiResponse.noContent(res);
+  });
+
   // ─── Transfers ───
   static listTransfers = asyncWrapper(async (req: Request, res: Response) => {
     const result = await CardsService.listTransfers(req.query);
@@ -70,5 +78,19 @@ export class CardsController {
     const transfer = await CardsService.createTransfer(req.body);
     logAudit(req, { action: AuditAction.transfer, module: AuditModule.cards, target: `transfer:${transfer.id}`, details: `Card transfer created` });
     ApiResponse.created(res, transfer);
+  });
+
+  static updateTransfer = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    const transfer = await CardsService.updateTransfer(id, req.body);
+    logAudit(req, { action: AuditAction.update, module: AuditModule.cards, target: `transfer:${id}`, details: `Updated card transfer id=${id}` });
+    ApiResponse.success(res, transfer);
+  });
+
+  static deleteTransfer = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await CardsService.deleteTransfer(id);
+    logAudit(req, { action: AuditAction.delete, module: AuditModule.cards, target: `transfer:${id}`, details: `Deleted card transfer id=${id}`, severity: 'warning' as any });
+    ApiResponse.noContent(res);
   });
 }

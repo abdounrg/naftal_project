@@ -4,9 +4,10 @@ import DataTable from '../../components/DataTable';
 import { useLanguage } from '../../context/LanguageContext';
 import { cardsApi, structuresApi } from '../../lib/api';
 import { useApiData } from '../../hooks/useApiData';
+import { DatePicker } from '../../components/ui/date-picker';
 
-const inputClass = "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--naftal-blue)]";
-const readonlyClass = "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-sm text-gray-900 dark:text-white cursor-not-allowed";
+const inputClass = "w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+const readonlyClass = "w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-100 dark:bg-gray-600 text-sm text-gray-900 dark:text-white cursor-not-allowed";
 
 const CardMonitoring = () => {
   const { language } = useLanguage();
@@ -91,11 +92,11 @@ const CardMonitoring = () => {
 
   const openEditModal = (row: any) => {
     setIsEditing(true); setSelectedRow(row); resetFormState();
-    const stCode = row.station?.structure?.code || row.structure_code || '';
-    const staCode = row.station?.code || row.station_code || '';
-    setStructureName(row.station?.structure?.name || row.structure_name || '');
-    setStructureDistrict(row.station?.structure?.district?.name || row.district || '');
-    setStationName(row.station?.name || row.station_name || '');
+    const stCode = row.structure_code || '';
+    const staCode = row.station_code || '';
+    setStructureName(row.structure_name || '');
+    setStructureDistrict(row.district || '');
+    setStationName(row.station_name || '');
     if (stCode) setStructureLookupStatus('found');
     if (staCode) setStationLookupStatus('found');
     setFormData({
@@ -164,7 +165,7 @@ const CardMonitoring = () => {
           { label: language === 'fr' ? 'En Traitement' : 'Being Processed', value: String(monitoringData.filter((d: any) => d.status === 'en_traitement').length), color: 'bg-orange-500' },
           { label: language === 'fr' ? 'Traitees' : 'Processed', value: String(monitoringData.filter((d: any) => ['debloquee', 'remplace'].includes(d.status)).length), color: 'bg-green-500' },
         ].map((stat, index) => (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 stat-card">
+          <div key={index} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-slate-800/60 stat-card">
             <p className="text-xl font-bold text-gray-900 dark:text-white">{stat.value}</p>
             <p className="text-xs text-gray-500 dark:text-gray-400">{stat.label}</p>
           </div>
@@ -175,22 +176,39 @@ const CardMonitoring = () => {
         columns={columns}
         data={monitoringData}
         title={language === 'fr' ? 'Liste des Cartes en Suivi' : 'Cards in Monitoring List'}
+        section="card_monitoring"
         onAdd={openAddModal}
         onEdit={openEditModal}
         onView={(row) => { setSelectedRow(row); setShowViewModal(true); }}
-        onDelete={async (row) => { await cardsApi.updateMonitoring(row.id, { _delete: true }); refetch(); }}
+        onDelete={async (row) => { await cardsApi.deleteMonitoring(row.id); refetch(); }}
       />
 
       {showViewModal && selectedRow && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800/60 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">{language === 'fr' ? 'Details Suivi' : 'Monitoring Details'}</h3>
               <button onClick={() => setShowViewModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
-              {Object.entries(selectedRow).filter(([k]) => k !== 'id').map(([key, value]) => (
-                <div key={key}><p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{key.replace(/_/g, ' ')}</p><p className="text-sm font-medium text-gray-900 dark:text-white">{String(value ?? '-')}</p></div>
+              {[
+                { label: language === 'fr' ? 'N° Carte' : 'Card Number', value: selectedRow.card_number },
+                { label: 'District', value: selectedRow.district },
+                { label: language === 'fr' ? 'Structure' : 'Structure', value: selectedRow.structure_name },
+                { label: language === 'fr' ? 'Code Station' : 'Station Code', value: selectedRow.station_code },
+                { label: language === 'fr' ? 'Station' : 'Station', value: selectedRow.station_name },
+                { label: language === 'fr' ? 'Mode Operation' : 'Operation Mode', value: selectedRow.operation_mode },
+                { label: language === 'fr' ? 'Date Anomalie' : 'Anomaly Date', value: selectedRow.anomaly_date },
+                { label: language === 'fr' ? 'Diagnostic' : 'Diagnostic', value: selectedRow.diagnostic },
+                { label: language === 'fr' ? 'Statut' : 'Status', value: selectedRow.status },
+                { label: language === 'fr' ? 'Carte Substitution' : 'Substitution Card', value: selectedRow.substitution_card },
+                { label: language === 'fr' ? 'Duree Traitement' : 'Processing Duration', value: selectedRow.processing_duration },
+                { label: language === 'fr' ? 'Duree Immobilisation' : 'Immobilization Duration', value: selectedRow.immobilization_duration },
+              ].map((item, i) => (
+                <div key={i}>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{item.label}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{item.value || '-'}</p>
+                </div>
               ))}
             </div>
           </div>
@@ -199,8 +217,8 @@ const CardMonitoring = () => {
 
       {showModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay-enter">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800/60 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {isEditing ? (language === 'fr' ? 'Modifier Suivi' : 'Edit Monitoring') : (language === 'fr' ? 'Ajouter Suivi' : 'Add Monitoring')}
               </h3>
@@ -225,11 +243,11 @@ const CardMonitoring = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Nom Structure' : 'Structure Name'}</label>
-                    <input type="text" readOnly tabIndex={-1} value={structureName} className={readonlyClass} />
+                    <input type="text" aria-label="Structure Name" readOnly tabIndex={-1} value={structureName} className={readonlyClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
-                    <input type="text" readOnly tabIndex={-1} value={structureDistrict} className={readonlyClass} />
+                    <input type="text" aria-label="District" readOnly tabIndex={-1} value={structureDistrict} className={readonlyClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -248,7 +266,7 @@ const CardMonitoring = () => {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Nom Station' : 'Station Name'}</label>
-                    <input type="text" readOnly tabIndex={-1} value={stationName} className={readonlyClass} />
+                    <input type="text" aria-label="Station Name" readOnly tabIndex={-1} value={stationName} className={readonlyClass} />
                   </div>
                 </div>
               </div>
@@ -261,40 +279,40 @@ const CardMonitoring = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'N° Carte' : 'Card Number'} *</label>
-                    <input type="text" required value={formData.card_number} onChange={e => setFormData(p => ({ ...p, card_number: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="Card Number" required value={formData.card_number} onChange={e => setFormData(p => ({ ...p, card_number: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Mode Operation' : 'Operation Mode'}</label>
-                    <input type="text" value={formData.operation_mode} onChange={e => setFormData(p => ({ ...p, operation_mode: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="Operation Mode" value={formData.operation_mode} onChange={e => setFormData(p => ({ ...p, operation_mode: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Date Anomalie' : 'Anomaly Date'}</label>
-                    <input type="date" value={formData.anomaly_date} onChange={e => setFormData(p => ({ ...p, anomaly_date: e.target.value }))} className={inputClass} />
+                    <DatePicker value={formData.anomaly_date} onChange={v => setFormData(p => ({ ...p, anomaly_date: v }))} placeholder={language === 'fr' ? 'Selectionner' : 'Select date'} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? '1er Diagnostic' : '1st Diagnostic'}</label>
-                    <input type="text" value={formData.diagnostic} onChange={e => setFormData(p => ({ ...p, diagnostic: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="Diagnostic" value={formData.diagnostic} onChange={e => setFormData(p => ({ ...p, diagnostic: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Etat' : 'Status'} *</label>
-                    <select required value={formData.status} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))} className={inputClass}>
+                    <select aria-label="Status" required value={formData.status} onChange={e => setFormData(p => ({ ...p, status: e.target.value }))} className={inputClass}>
                       <option value="">{language === 'fr' ? 'Selectionner...' : 'Select...'}</option>
                       {['defectueux', 'expire', 'perdu', 'vole', 'sim_endommage', 'physiquement_endommage', 'debloquee', 'en_traitement', 'n_a', 'remplace'].map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{language === 'fr' ? 'Carte Substitution' : 'Substitution Card'}</label>
-                    <input type="text" value={formData.substitution_card} onChange={e => setFormData(p => ({ ...p, substitution_card: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="Substitution Card" value={formData.substitution_card} onChange={e => setFormData(p => ({ ...p, substitution_card: e.target.value }))} className={inputClass} />
                   </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-800/60">
                 {formError && <p className="flex-1 text-sm text-red-600 dark:text-red-400 self-center">{formError}</p>}
-                <button type="button" onClick={() => { setShowModal(false); setIsEditing(false); }} className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <button type="button" onClick={() => { setShowModal(false); setIsEditing(false); }} className="px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                   {language === 'fr' ? 'Annuler' : 'Cancel'}
                 </button>
-                <button type="submit" className="px-6 py-2 bg-[var(--naftal-blue)] text-white rounded-lg text-sm font-medium hover:bg-[var(--naftal-dark-blue)]">
+                <button type="submit" className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">
                   {language === 'fr' ? 'Enregistrer' : 'Save'}
                 </button>
               </div>

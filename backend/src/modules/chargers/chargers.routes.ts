@@ -3,7 +3,7 @@ import { ChargersController } from './chargers.controller';
 import { authenticate } from '../../middleware/auth';
 import { allRoles, dpeAndAbove } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
-import { createChargerSchema, updateChargerSchema, createBaseSchema, updateBaseSchema, createChargerTransferSchema } from './chargers.validators';
+import { createChargerSchema, updateChargerSchema, createBaseSchema, updateBaseSchema, createChargerTransferSchema, updateChargerTransferSchema } from './chargers.validators';
 
 const router = Router();
 
@@ -19,9 +19,12 @@ router.delete('/stock/:id', dpeAndAbove, ChargersController.deleteCharger);
 router.get('/bases', allRoles, ChargersController.listBases);
 router.post('/bases', dpeAndAbove, validate(createBaseSchema), ChargersController.createBase);
 router.put('/bases/:id', dpeAndAbove, validate(updateBaseSchema), ChargersController.updateBase);
+router.delete('/bases/:id', dpeAndAbove, ChargersController.deleteBase);
 
 // Transfers
 router.get('/transfers', allRoles, ChargersController.listTransfers);
 router.post('/transfers', dpeAndAbove, validate(createChargerTransferSchema), ChargersController.createTransfer);
+router.put('/transfers/:id', dpeAndAbove, validate(updateChargerTransferSchema), ChargersController.updateTransfer);
+router.delete('/transfers/:id', dpeAndAbove, ChargersController.deleteTransfer);
 
 export { router as chargersRoutes };

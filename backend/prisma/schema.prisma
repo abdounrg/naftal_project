@@ -139,6 +139,26 @@ enum AuditSeverity {
   critical
 }
 
+enum NotificationType {
+  new_pending_user
+  login_support_request
+  suspicious_activity
+  user_request_approved
+  user_request_rejected
+}
+
+enum NotificationStatus {
+  unread
+  read
+}
+
+enum SupportRequestStatus {
+  open
+  in_progress
+  resolved
+  rejected
+}
+
 // ============================================
 // 1. ORGANIZATIONAL STRUCTURE
 // ============================================
@@ -211,6 +231,8 @@ model User {
   role         UserRole
   districtId   Int?       @map("district_id")
   structureId  Int?       @map("structure_id")
+  requestedById Int?      @map("requested_by_id")
+  permissions  Json?      @default("{}")
   status       UserStatus @default(active)
   failedLogins Int        @default(0) @map("failed_logins")
   lockedUntil  DateTime?  @map("locked_until")
@@ -220,14 +242,20 @@ model User {
 
   district      District?      @relation(fields: [districtId], references: [id])
   structure     Structure?     @relation(fields: [structureId], references: [id])
+  requestedBy   User?          @relation("UserRequests", fields: [requestedById], references: [id])
+  requestedUsers User[]        @relation("UserRequests")
   refreshTokens RefreshToken[]
   auditLogs     AuditLog[]
+  notifications Notification[]
+  createdSupportRequests LoginSupportRequest[] @relation("SupportRequestCreator")
+  assignedSupportRequests LoginSupportRequest[] @relation("SupportRequestAssignee")
 
   @@index([email])
   @@index([role])
   @@index([status])
   @@index([districtId])
   @@index([structureId])
+  @@index([requestedById])
   @@map("users")
 }
 
@@ -269,7 +297,7 @@ model Tpe {
   expirationDate  DateTime?      @map("expiration_date") @db.Date
   assignmentType  AssignmentType? @map("assignment_type")
   stationId       Int?           @map("station_id")
-  status          TpeStatus      @default(en_stock)
+  status          TpeStatus      @default(en_service)
   inventoryNumber String?        @map("inventory_number") @db.VarChar(50)
   createdAt       DateTime       @default(now()) @map("created_at")
   updatedAt       DateTime       @updatedAt @map("updated_at")
@@ -294,6 +322,7 @@ model TpeMaintenance {
   stationId               Int?              @map("station_id")
   operationMode           String            @map("operation_mode") @db.VarChar(50)
   breakdownDate           DateTime          @map("breakdown_date") @db.Date
+  problemType             String?           @map("problem_type") @db.VarChar(100)
   diagnostic              String?
   trsStStr                DateTime?         @map("trs_st_str") @db.Date
   trsStrDpe               DateTime?         @map("trs_str_dpe") @db.Date
@@ -307,7 +336,7 @@ model TpeMaintenance {
   createdAt               DateTime          @default(now()) @map("created_at")
   updatedAt               DateTime          @updatedAt @map("updated_at")
 
-  tpe     Tpe      @relation(fields: [tpeId], references: [id])
+  tpe     Tpe      @relation(fields: [tpeId], references: [id], onDelete: Cascade)
   station Station? @relation(fields: [stationId], references: [id])
 
   @@index([tpeId])
@@ -333,7 +362,7 @@ model TpeReturn {
   createdAt               DateTime  @default(now()) @map("created_at")
   updatedAt               DateTime  @updatedAt @map("updated_at")
 
-  tpe        Tpe      @relation(fields: [tpeId], references: [id])
+  tpe        Tpe      @relation(fields: [tpeId], references: [id], onDelete: Cascade)
   oldStation Station? @relation("OldStation", fields: [oldStationId], references: [id])
   newStation Station? @relation("NewStation", fields: [newStationId], references: [id])
 
@@ -367,7 +396,7 @@ model TpeTransferItem {
   tpeId      Int @map("tpe_id")
 
   transfer TpeTransfer @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  tpe      Tpe         @relation(fields: [tpeId], references: [id])
+  tpe      Tpe         @relation(fields: [tpeId], references: [id], onDelete: Cascade)
 
   @@map("tpe_transfer_items")
 }
@@ -380,7 +409,7 @@ model TpeReform {
   reason     String?
   createdAt  DateTime @default(now()) @map("created_at")
 
-  tpe Tpe @relation(fields: [tpeId], references: [id])
+  tpe Tpe @relation(fields: [tpeId], references: [id], onDelete: Cascade)
 
   @@index([tpeId])
   @@map("tpe_reforms")
@@ -452,7 +481,7 @@ model ManagementCard {
   createdAt      DateTime   @default(now()) @map("created_at")
   updatedAt      DateTime   @updatedAt @map("updated_at")
 
-  tpe          Tpe?              @relation(fields: [tpeId], references: [id])
+  tpe          Tpe?              @relation(fields: [tpeId], references: [id], onDelete: SetNull)
   station      Station?          @relation(fields: [stationId], references: [id])
   monitoring   CardMonitoring[]  @relation("MonitoredCard")
   substitution CardMonitoring[]  @relation("SubstitutionCard")
@@ -484,9 +513,9 @@ model CardMonitoring {
   createdAt               DateTime             @default(now()) @map("created_at")
   updatedAt               DateTime             @updatedAt @map("updated_at")
 
-  card             ManagementCard  @relation("MonitoredCard", fields: [cardId], references: [id])
+  card             ManagementCard  @relation("MonitoredCard", fields: [cardId], references: [id], onDelete: Cascade)
   station          Station?        @relation(fields: [stationId], references: [id])
-  substitutionCard ManagementCard? @relation("SubstitutionCard", fields: [substitutionCardId], references: [id])
+  substitutionCard ManagementCard? @relation("SubstitutionCard", fields: [substitutionCardId], references: [id], onDelete: SetNull)
 
   @@index([cardId])
   @@index([status])
@@ -519,7 +548,7 @@ model CardTransferItem {
   cardId     Int @map("card_id")
 
   transfer CardTransfer   @relation(fields: [transferId], references: [id], onDelete: Cascade)
-  card     ManagementCard @relation(fields: [cardId], references: [id])
+  card     ManagementCard @relation(fields: [cardId], references: [id], onDelete: Cascade)
 
   @@map("card_transfer_items")
 }
@@ -541,7 +570,7 @@ model AuditLog {
   severity  AuditSeverity @default(info)
   createdAt DateTime      @default(now()) @map("created_at")
 
-  user User @relation(fields: [userId], references: [id])
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([action])
@@ -549,4 +578,47 @@ model AuditLog {
   @@index([severity])
   @@index([createdAt(sort: Desc)])
   @@map("audit_logs")
+}
+
+model Notification {
+  id        Int                @id @default(autoincrement())
+  userId    Int                @map("user_id")
+  type      NotificationType
+  title     String             @db.VarChar(180)
+  message   String?
+  payload   Json?              @default("{}")
+  status    NotificationStatus @default(unread)
+  readAt    DateTime?          @map("read_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+  updatedAt DateTime           @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("notifications")
+}
+
+model LoginSupportRequest {
+  id                 Int                  @id @default(autoincrement())
+  requesterName      String               @map("requester_name") @db.VarChar(150)
+  requesterEmail     String               @map("requester_email") @db.VarChar(255)
+  requesterPhone     String?              @map("requester_phone") @db.VarChar(20)
+  problemDescription String               @map("problem_description")
+  metadata           Json?                @default("{}")
+  status             SupportRequestStatus @default(open)
+  createdByUserId    Int?                 @map("created_by_user_id")
+  assignedAdminId    Int?                 @map("assigned_admin_id")
+  adminNotes         String?              @map("admin_notes")
+  resolvedAt         DateTime?            @map("resolved_at")
+  createdAt          DateTime             @default(now()) @map("created_at")
+  updatedAt          DateTime             @updatedAt @map("updated_at")
+
+  createdByUser User? @relation("SupportRequestCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  assignedAdmin User? @relation("SupportRequestAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+
+  @@index([status])
+  @@index([createdAt(sort: Desc)])
+  @@map("login_support_requests")
 }

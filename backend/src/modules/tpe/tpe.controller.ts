@@ -38,6 +38,12 @@ export class TpeController {
     ApiResponse.noContent(res);
   });
 
+  static listByStructure = asyncWrapper(async (req: Request, res: Response) => {
+    const code = req.params.code as string;
+    const data = await TpeService.listByStructure(code);
+    ApiResponse.success(res, data);
+  });
+
   // ─── Maintenance ───
   static listMaintenance = asyncWrapper(async (req: Request, res: Response) => {
     const result = await TpeService.listMaintenance(req.query);
@@ -56,6 +62,18 @@ export class TpeController {
     ApiResponse.success(res, record);
   });
 
+  static deleteMaintenance = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await TpeService.deleteMaintenance(id);
+    logAudit(req, { action: AuditAction.delete, module: AuditModule.tpe, target: `maintenance:${id}`, details: `Deleted TPE maintenance record`, severity: 'warning' as any });
+    ApiResponse.noContent(res);
+  });
+
+  static getDistinctProblemTypes = asyncWrapper(async (_req: Request, res: Response) => {
+    const types = await TpeService.getDistinctProblemTypes();
+    ApiResponse.success(res, types);
+  });
+
   // ─── Returns ───
   static listReturns = asyncWrapper(async (req: Request, res: Response) => {
     const result = await TpeService.listReturns(req.query);
@@ -66,6 +84,19 @@ export class TpeController {
     const record = await TpeService.createReturn(req.body);
     logAudit(req, { action: AuditAction.create, module: AuditModule.tpe, target: `return:${record.id}`, details: `Created TPE return record` });
     ApiResponse.created(res, record);
+  });
+
+  static updateReturn = asyncWrapper(async (req: Request, res: Response) => {
+    const record = await TpeService.updateReturn(parseId(req.params.id), req.body);
+    logAudit(req, { action: AuditAction.update, module: AuditModule.tpe, target: `return:${record.id}`, details: `Updated TPE return record` });
+    ApiResponse.success(res, record);
+  });
+
+  static deleteReturn = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await TpeService.deleteReturn(id);
+    logAudit(req, { action: AuditAction.delete, module: AuditModule.tpe, target: `return:${id}`, details: `Deleted TPE return record`, severity: 'warning' as any });
+    ApiResponse.noContent(res);
   });
 
   // ─── Transfers ───
@@ -80,6 +111,19 @@ export class TpeController {
     ApiResponse.created(res, transfer);
   });
 
+  static updateTransfer = asyncWrapper(async (req: Request, res: Response) => {
+    const transfer = await TpeService.updateTransfer(parseId(req.params.id), req.body);
+    logAudit(req, { action: AuditAction.update, module: AuditModule.tpe, target: `transfer:${transfer.id}`, details: `Updated TPE transfer` });
+    ApiResponse.success(res, transfer);
+  });
+
+  static deleteTransfer = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await TpeService.deleteTransfer(id);
+    logAudit(req, { action: AuditAction.delete, module: AuditModule.tpe, target: `transfer:${id}`, details: `Deleted TPE transfer id=${id}`, severity: 'warning' as any });
+    ApiResponse.noContent(res);
+  });
+
   // ─── Reform ───
   static listReforms = asyncWrapper(async (req: Request, res: Response) => {
     const result = await TpeService.listReforms(req.query);
@@ -90,5 +134,18 @@ export class TpeController {
     const record = await TpeService.createReform(req.body);
     logAudit(req, { action: AuditAction.delete, module: AuditModule.tpe, target: `reform:${record.id}`, details: `TPE marked for reform`, severity: 'warning' as any });
     ApiResponse.created(res, record);
+  });
+
+  static updateReform = asyncWrapper(async (req: Request, res: Response) => {
+    const record = await TpeService.updateReform(parseId(req.params.id), req.body);
+    logAudit(req, { action: AuditAction.update, module: AuditModule.tpe, target: `reform:${record.id}`, details: `Updated TPE reform record` });
+    ApiResponse.success(res, record);
+  });
+
+  static deleteReform = asyncWrapper(async (req: Request, res: Response) => {
+    const id = parseId(req.params.id);
+    await TpeService.deleteReform(id);
+    logAudit(req, { action: AuditAction.delete, module: AuditModule.tpe, target: `reform:${id}`, details: `Deleted TPE reform record`, severity: 'warning' as any });
+    ApiResponse.noContent(res);
   });
 }

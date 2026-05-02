@@ -4,6 +4,10 @@ module.exports = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Inter', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'sans-serif'],
+        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+      },
       colors: {
         border: "hsl(var(--border))",
         input: "hsl(var(--input))",
@@ -50,6 +54,7 @@ module.exports = {
         },
       },
       borderRadius: {
+        '2xl': "calc(var(--radius) + 6px)",
         xl: "calc(var(--radius) + 4px)",
         lg: "var(--radius)",
         md: "calc(var(--radius) - 2px)",
@@ -57,7 +62,12 @@ module.exports = {
         xs: "calc(var(--radius) - 6px)",
       },
       boxShadow: {
-        xs: "0 1px 2px 0 rgb(0 0 0 / 0.05)",
+        xs: "0 1px 2px 0 rgb(0 0 0 / 0.03)",
+        'soft': "0 2px 8px -2px rgb(0 0 0 / 0.06), 0 0 0 1px rgb(0 0 0 / 0.02)",
+        'card': "0 1px 3px rgb(0 0 0 / 0.04), 0 0 0 1px rgb(0 0 0 / 0.02)",
+        'elevated': "0 8px 24px -4px rgb(0 0 0 / 0.08), 0 0 0 1px rgb(0 0 0 / 0.02)",
+        'glow-blue': "0 0 20px -4px rgba(37, 99, 235, 0.3)",
+        'glow-amber': "0 0 20px -4px rgba(245, 158, 11, 0.3)",
       },
       keyframes: {
         "accordion-down": {
@@ -72,11 +82,16 @@ module.exports = {
           "0%,70%,100%": { opacity: "1" },
           "20%,50%": { opacity: "0" },
         },
+        "shimmer": {
+          "0%": { transform: "translateX(-100%)" },
+          "100%": { transform: "translateX(100%)" },
+        },
       },
       animation: {
         "accordion-down": "accordion-down 0.2s ease-out",
         "accordion-up": "accordion-up 0.2s ease-out",
         "caret-blink": "caret-blink 1.25s ease-out infinite",
+        "shimmer": "shimmer 2s infinite",
       },
     },
   },

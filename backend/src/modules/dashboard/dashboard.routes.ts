@@ -9,5 +9,6 @@ router.use(authenticate, allRoles);
 
 router.get('/stats', DashboardController.getStats);
 router.get('/distribution', DashboardController.getDistribution);
+router.get('/stations-without-tpe', DashboardController.getStationsWithoutTpe);
 
 export { router as dashboardRoutes };

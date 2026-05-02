@@ -12,6 +12,7 @@ export class DashboardService {
       totalUsers,
       maintenanceActive,
       recentTransfers,
+      stationsWithoutTpe,
     ] = await Promise.all([
       prisma.tpe.count(),
       prisma.tpe.groupBy({ by: ['status'], _count: true }),
@@ -24,6 +25,9 @@ export class DashboardService {
       }),
       prisma.tpeTransfer.count({
         where: { receptionDate: null },
+      }),
+      prisma.station.count({
+        where: { tpes: { none: {} } },
       }),
     ]);
 
@@ -44,7 +48,7 @@ export class DashboardService {
       },
       cards: { total: totalCards },
       chargers: { total: totalChargers._sum.quantity || 0 },
-      stations: { total: totalStations },
+      stations: { total: totalStations, withoutTpe: stationsWithoutTpe },
       users: { total: totalUsers },
       maintenance: { active: maintenanceActive },
       transfers: { pending: recentTransfers },
@@ -59,5 +63,15 @@ export class DashboardService {
       byModel: byModel.map((m) => ({ model: m.model, count: m._count })),
       byOperator: byOperator.map((o) => ({ operator: o.operator, count: o._count })),
     };
+  }
+
+  static async getStationsWithoutTpe() {
+    return prisma.station.findMany({
+      where: { tpes: { none: {} } },
+      orderBy: { name: 'asc' },
+      include: {
+        structure: { select: { id: true, name: true, code: true, district: { select: { id: true, name: true, code: true } } } },
+      },
+    });
   }
 }

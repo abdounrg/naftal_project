@@ -4,6 +4,7 @@ import DataTable from '../../components/DataTable';
 import { useLanguage } from '../../context/LanguageContext';
 import { tpeApi, structuresApi } from '../../lib/api';
 import { useApiData } from '../../hooks/useApiData';
+import { DatePicker } from '../../components/ui/date-picker';
 
 const TPE_MODELS: { value: string; label: string }[] = [
   { value: 'IWIL_250',  label: 'IWIL 250' },
@@ -14,9 +15,9 @@ const TPE_MODELS: { value: string; label: string }[] = [
 const TPE_OPERATORS = ['Djezzy', 'Mobilis', 'Ooredoo'];
 const ASSIGNMENT_TYPES = ['Initial', 'Supplementaire'];
 
-const inputClass = "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[var(--naftal-blue)]";
-const readonlyClass = "w-full px-3 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-gray-100 dark:bg-gray-600 text-sm text-gray-900 dark:text-white cursor-not-allowed";
-const ipInputClass = "w-16 px-2 py-2 border border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-[var(--naftal-blue)]";
+const inputClass = "w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500/20";
+const readonlyClass = "w-full px-3 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-gray-100 dark:bg-gray-600 text-sm text-gray-900 dark:text-white cursor-not-allowed";
+const ipInputClass = "w-16 px-2 py-2 border border-gray-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-800 text-sm text-gray-900 dark:text-white text-center focus:outline-none focus:ring-2 focus:ring-blue-500/20";
 
 const TPEStock = () => {
   const { language } = useLanguage();
@@ -44,7 +45,31 @@ const TPEStock = () => {
     structure_code: '', stationCode: '',
     serial: '', model: '', purchase_price: '', operator: '', sim_serial: '',
     sim_phone: '', reception_date: '', delivery_date: '', expiration_date: '',
-    assignment_type: 'Initial', card_numbers: '', inventoryNumber: '',
+    assignment_type: 'Initial', card_numbers: '', inventoryNumber: '', status: 'en_service',
+  };
+
+  const tpeStatusOptions = [
+    { value: 'en_service', label: language === 'fr' ? 'En Service' : 'In Service' },
+    { value: 'en_stock', label: language === 'fr' ? 'En Stock' : 'In Stock' },
+    { value: 'en_maintenance', label: language === 'fr' ? 'En Maintenance' : 'In Maintenance' },
+    { value: 'en_panne', label: language === 'fr' ? 'En Panne' : 'Broken Down' },
+    { value: 'en_transfert', label: language === 'fr' ? 'En Transfert' : 'In Transfer' },
+    { value: 'en_traitement', label: language === 'fr' ? 'En Traitement' : 'Being Processed' },
+    { value: 'a_retourner', label: language === 'fr' ? 'A Retourner' : 'To Return' },
+    { value: 'vole', label: language === 'fr' ? 'Vole' : 'Stolen' },
+    { value: 'reforme', label: language === 'fr' ? 'Reforme' : 'Reformed' },
+  ];
+
+  const statusColors: Record<string, string> = {
+    'en_service': 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
+    'en_stock': 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-200',
+    'en_maintenance': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200',
+    'en_panne': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    'en_transfert': 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
+    'en_traitement': 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+    'a_retourner': 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200',
+    'vole': 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
+    'reforme': 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
   };
   const [formData, setFormData] = useState(emptyForm);
 
@@ -178,14 +203,14 @@ const TPEStock = () => {
     setIsEditing(true);
     setSelectedRow(row);
     resetFormState();
-    const stCode = row.station?.structure?.code || row.structure_code || '';
-    const staCode = row.station?.code || row.stationCode || row.station_code || '';
+    const stCode = row.structure_code || '';
+    const staCode = row.station_code || row.code || '';
     const ip = row.sim_ip || row.simIp || '';
     const parts = ip.split('.');
     setIpParts([parts[0] || '', parts[1] || '', parts[2] || '', parts[3] || '']);
-    setStructureName(row.station?.structure?.name || row.structure_name || '');
-    setStructureDistrict(row.station?.structure?.district?.name || row.district || '');
-    setStationName(row.station?.name || row.station_name || '');
+    setStructureName(row.structure_name || '');
+    setStructureDistrict(row.district || '');
+    setStationName(row.station_name || '');
     if (stCode) setStructureLookupStatus('found');
     if (staCode) setStationLookupStatus('found');
     setFormData({
@@ -198,6 +223,7 @@ const TPEStock = () => {
       expiration_date: row.expiration_date || row.expirationDate?.split('T')[0] || '',
       assignment_type: row.assignment_type || row.assignmentType || 'Initial',
       card_numbers: row.card_numbers || '', inventoryNumber: row.inventoryNumber || row.inventory_number || '',
+      status: row.status || 'en_service',
     });
     setShowAddModal(true);
   };
@@ -220,6 +246,7 @@ const TPEStock = () => {
       expirationDate: formData.expiration_date || undefined,
       simSerial: formData.sim_serial || undefined,
       simPhone: formData.sim_phone || undefined,
+      status: isEditing ? formData.status : undefined,
     };
     try {
       if (isEditing && selectedRow) {
@@ -243,14 +270,27 @@ const TPEStock = () => {
     { key: 'model', label: language === 'fr' ? 'Modele' : 'Model' },
     { key: 'district', label: language === 'fr' ? 'District' : 'District' },
     { key: 'structure_name', label: language === 'fr' ? 'Structure' : 'Structure' },
+    { key: 'code', label: language === 'fr' ? 'Code Station' : 'Station Code' },
     { key: 'station_name', label: language === 'fr' ? 'Station' : 'Station' },
     { key: 'operator', label: language === 'fr' ? 'Operateur' : 'Operator' },
-    {
-      key: 'delivery_date',
-      label: language === 'fr' ? 'Date Livraison' : 'Delivery Date',
-      render: (value: string | null) => value || <span className="text-yellow-600">{language === 'fr' ? 'En attente' : 'Pending'}</span>
-    },
     { key: 'assignment_type', label: language === 'fr' ? 'Type Affectation' : 'Assignment Type' },
+    {
+      key: 'status',
+      label: language === 'fr' ? 'Etat' : 'Status',
+      render: (value: string) => {
+        const label = tpeStatusOptions.find(s => s.value === value)?.label || value;
+        return <span className={`inline-flex items-center whitespace-nowrap px-2.5 py-1 rounded-full text-xs font-medium ${statusColors[value] || 'bg-gray-100 text-gray-800 dark:bg-slate-800 dark:text-gray-200'}`}>{label}</span>;
+      }
+    },
+    {
+      key: 'amortissement',
+      label: language === 'fr' ? 'Amortissement' : 'Depreciation',
+      render: (value: string) => {
+        if (!value) return <span className="text-gray-400">-</span>;
+        if (value === 'Expiré') return <span className="px-2 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400">{value}</span>;
+        return <span className="text-sm">{value}</span>;
+      }
+    },
   ];
 
   return (
@@ -262,11 +302,11 @@ const TPEStock = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-6 grid-stagger">
         {[
           { label: language === 'fr' ? 'Total Stock' : 'Total Stock', value: stockData.length.toLocaleString(), color: 'bg-blue-500' },
-          { label: language === 'fr' ? 'En Attente Livraison' : 'Pending Delivery', value: stockData.filter((d: any) => !d.delivery_date).length.toLocaleString(), color: 'bg-yellow-500' },
-          { label: language === 'fr' ? 'Livres' : 'Delivered', value: stockData.filter((d: any) => d.delivery_date).length.toLocaleString(), color: 'bg-green-500' },
+          { label: language === 'fr' ? 'En Service' : 'In Service', value: stockData.filter((d: any) => d.status === 'en_service').length.toLocaleString(), color: 'bg-green-500' },
+          { label: language === 'fr' ? 'En Maintenance' : 'In Maintenance', value: stockData.filter((d: any) => d.status === 'en_maintenance' || d.status === 'en_panne').length.toLocaleString(), color: 'bg-yellow-500' },
           { label: language === 'fr' ? 'Valeur Totale' : 'Total Value', value: `${stockData.reduce((sum: number, d: any) => sum + (Number(d.purchase_price) || 0), 0).toLocaleString()} DZD`, color: 'bg-purple-500' },
         ].map((stat, index) => (
-          <div key={index} className="bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-gray-700 stat-card">
+          <div key={index} className="bg-white dark:bg-slate-900 rounded-xl p-4 shadow-sm border border-gray-100 dark:border-slate-800/60 stat-card">
             <div className={`w-10 h-10 rounded-lg ${stat.color} bg-opacity-10 flex items-center justify-center mb-2`}>
               <span className={`text-lg font-bold ${stat.color.replace('bg-', 'text-')}`}>{stat.value.charAt(0)}</span>
             </div>
@@ -281,6 +321,7 @@ const TPEStock = () => {
         columns={columns}
         data={stockData}
         title={language === 'fr' ? 'Liste des TPE en Stock' : 'TPE Stock List'}
+        section="tpe_stock"
         onAdd={openAddModal}
         onEdit={openEditModal}
         onDelete={async (row) => { await tpeApi.deleteStock(row.id); refetch(); }}
@@ -290,6 +331,8 @@ const TPEStock = () => {
           { key: 'model', label: language === 'fr' ? 'Modele' : 'Model', type: 'select', options: TPE_MODELS.map(m => m.value) },
           { key: 'operator', label: language === 'fr' ? 'Operateur' : 'Operator', type: 'select', options: TPE_OPERATORS },
           { key: 'assignment_type', label: language === 'fr' ? 'Type Affectation' : 'Assignment Type', type: 'select', options: ['Initial', 'Supplementaire'] },
+          { key: 'status', label: language === 'fr' ? 'Etat' : 'Status', type: 'select', options: tpeStatusOptions.map(s => s.value) },
+          { key: 'code', label: language === 'fr' ? 'Code Station' : 'Station Code', type: 'text' },
           { key: 'reception_date', label: language === 'fr' ? 'Date Reception' : 'Reception Date', type: 'date' },
           { key: 'serial', label: language === 'fr' ? 'N° Serie' : 'Serial #', type: 'text' },
         ]}
@@ -298,18 +341,37 @@ const TPEStock = () => {
       {/* View Modal */}
       {showViewModal && selectedRow && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay-enter">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800/60 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {language === 'fr' ? 'Details TPE' : 'TPE Details'} - {selectedRow.serial}
               </h3>
               <button onClick={() => setShowViewModal(false)} className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">✕</button>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
-              {Object.entries(selectedRow).filter(([k]) => k !== 'id').map(([key, value]) => (
-                <div key={key}>
-                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{key.replace(/_/g, ' ')}</p>
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">{typeof value === 'object' ? JSON.stringify(value) : String(value ?? '-')}</p>
+              {[
+                { label: language === 'fr' ? 'N° Serie' : 'Serial', value: selectedRow.serial },
+                { label: language === 'fr' ? 'Modele' : 'Model', value: selectedRow.model },
+                { label: language === 'fr' ? 'Operateur' : 'Operator', value: selectedRow.operator },
+                { label: language === 'fr' ? 'Statut' : 'Status', value: selectedRow.status },
+                { label: 'District', value: selectedRow.district },
+                { label: language === 'fr' ? 'Structure' : 'Structure', value: selectedRow.structure_name },
+                { label: language === 'fr' ? 'Code Station' : 'Station Code', value: selectedRow.code },
+                { label: language === 'fr' ? 'Station' : 'Station', value: selectedRow.station_name },
+                { label: language === 'fr' ? 'Type Affectation' : 'Assignment Type', value: selectedRow.assignment_type },
+                { label: language === 'fr' ? 'N° Inventaire' : 'Inventory #', value: selectedRow.inventory_number },
+                { label: language === 'fr' ? 'SIM Serie' : 'SIM Serial', value: selectedRow.sim_serial },
+                { label: language === 'fr' ? 'SIM IP' : 'SIM IP', value: selectedRow.sim_ip },
+                { label: language === 'fr' ? 'SIM Telephone' : 'SIM Phone', value: selectedRow.sim_phone },
+                { label: language === 'fr' ? 'Prix Achat' : 'Purchase Price', value: selectedRow.purchase_price },
+                { label: language === 'fr' ? 'Date Reception' : 'Reception Date', value: selectedRow.reception_date },
+                { label: language === 'fr' ? 'Date Livraison' : 'Delivery Date', value: selectedRow.delivery_date },
+                { label: language === 'fr' ? 'Date Expiration' : 'Expiration Date', value: selectedRow.expiration_date },
+                { label: language === 'fr' ? 'Amortissement' : 'Depreciation', value: selectedRow.amortissement },
+              ].map((item, i) => (
+                <div key={i}>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 uppercase">{item.label}</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-white">{item.value || '-'}</p>
                 </div>
               ))}
             </div>
@@ -320,8 +382,8 @@ const TPEStock = () => {
       {/* Add/Edit Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 modal-overlay-enter">
-          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
-            <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto modal-content-enter">
+            <div className="p-6 border-b border-gray-200 dark:border-slate-800/60 flex items-center justify-between">
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white">
                 {isEditing ? (language === 'fr' ? 'Modifier TPE' : 'Edit TPE') : (language === 'fr' ? 'Ajouter un TPE' : 'Add TPE')}
               </h3>
@@ -366,6 +428,7 @@ const TPEStock = () => {
                     </label>
                     <input
                       type="text"
+                      aria-label="Structure Name"
                       readOnly
                       tabIndex={-1}
                       value={structureName}
@@ -378,6 +441,7 @@ const TPEStock = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">District</label>
                     <input
                       type="text"
+                      aria-label="District"
                       readOnly
                       tabIndex={-1}
                       value={structureDistrict}
@@ -427,6 +491,7 @@ const TPEStock = () => {
                     </label>
                     <input
                       type="text"
+                      aria-label="Station Name"
                       readOnly
                       tabIndex={-1}
                       value={stationName}
@@ -446,13 +511,13 @@ const TPEStock = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'N° Serie TPE' : 'TPE Serial #'} *
                     </label>
-                    <input type="text" required value={formData.serial} onChange={e => setFormData(prev => ({ ...prev, serial: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="TPE Serial" required value={formData.serial} onChange={e => setFormData(prev => ({ ...prev, serial: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'Modele' : 'Model'} *
                     </label>
-                    <select required value={formData.model} onChange={e => setFormData(prev => ({ ...prev, model: e.target.value }))} className={inputClass}>
+                    <select aria-label="Model" required value={formData.model} onChange={e => setFormData(prev => ({ ...prev, model: e.target.value }))} className={inputClass}>
                       <option value="">{language === 'fr' ? 'Selectionner...' : 'Select...'}</option>
                       {TPE_MODELS.map(m => <option key={m.value} value={m.value}>{m.label}</option>)}
                     </select>
@@ -461,22 +526,32 @@ const TPEStock = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'Prix Achat' : 'Purchase Price'}
                     </label>
-                    <input type="number" value={formData.purchase_price} onChange={e => setFormData(prev => ({ ...prev, purchase_price: e.target.value }))} className={inputClass} />
+                    <input type="number" aria-label="Purchase Price" value={formData.purchase_price} onChange={e => setFormData(prev => ({ ...prev, purchase_price: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'N° Inventaire' : 'Inventory #'}
                     </label>
-                    <input type="text" value={formData.inventoryNumber} onChange={e => setFormData(prev => ({ ...prev, inventoryNumber: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="Inventory Number" value={formData.inventoryNumber} onChange={e => setFormData(prev => ({ ...prev, inventoryNumber: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'Type Affectation' : 'Assignment Type'}
                     </label>
-                    <select value={formData.assignment_type} onChange={e => setFormData(prev => ({ ...prev, assignment_type: e.target.value }))} className={inputClass}>
+                    <select aria-label="Assignment Type" value={formData.assignment_type} onChange={e => setFormData(prev => ({ ...prev, assignment_type: e.target.value }))} className={inputClass}>
                       {ASSIGNMENT_TYPES.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
                   </div>
+                  {isEditing && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      {language === 'fr' ? 'Etat' : 'Status'}
+                    </label>
+                    <select aria-label="Status" value={formData.status} onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))} className={inputClass}>
+                      {tpeStatusOptions.map(s => <option key={s.value} value={s.value}>{s.label}</option>)}
+                    </select>
+                  </div>
+                  )}
                 </div>
               </div>
 
@@ -490,7 +565,7 @@ const TPEStock = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'Operateur' : 'Operator'} *
                     </label>
-                    <select required value={formData.operator} onChange={e => setFormData(prev => ({ ...prev, operator: e.target.value }))} className={inputClass}>
+                    <select aria-label="Operator" required value={formData.operator} onChange={e => setFormData(prev => ({ ...prev, operator: e.target.value }))} className={inputClass}>
                       <option value="">{language === 'fr' ? 'Selectionner...' : 'Select...'}</option>
                       {TPE_OPERATORS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
                     </select>
@@ -499,7 +574,7 @@ const TPEStock = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'N° Serie SIM' : 'SIM Serial #'}
                     </label>
-                    <input type="text" value={formData.sim_serial} onChange={e => setFormData(prev => ({ ...prev, sim_serial: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="SIM Serial" value={formData.sim_serial} onChange={e => setFormData(prev => ({ ...prev, sim_serial: e.target.value }))} className={inputClass} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -511,6 +586,7 @@ const TPEStock = () => {
                           <input
                             ref={ipRefs[i]}
                             type="text"
+                            aria-label={`IP Address octet ${i + 1}`}
                             inputMode="numeric"
                             maxLength={3}
                             value={part}
@@ -527,7 +603,7 @@ const TPEStock = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'N° Telephone SIM' : 'SIM Phone #'}
                     </label>
-                    <input type="text" value={formData.sim_phone} onChange={e => setFormData(prev => ({ ...prev, sim_phone: e.target.value }))} className={inputClass} />
+                    <input type="text" aria-label="SIM Phone" value={formData.sim_phone} onChange={e => setFormData(prev => ({ ...prev, sim_phone: e.target.value }))} className={inputClass} />
                   </div>
                 </div>
               </div>
@@ -540,32 +616,32 @@ const TPEStock = () => {
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'Date Reception' : 'Reception Date'}
                     </label>
-                    <input type="date" value={formData.reception_date} onChange={e => setFormData(prev => ({ ...prev, reception_date: e.target.value }))} className={inputClass} />
+                    <DatePicker value={formData.reception_date} onChange={v => setFormData(prev => ({ ...prev, reception_date: v }))} placeholder={language === 'fr' ? 'Selectionner' : 'Select date'} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'Date Livraison' : 'Delivery Date'}
                     </label>
-                    <input type="date" value={formData.delivery_date} onChange={e => setFormData(prev => ({ ...prev, delivery_date: e.target.value }))} className={inputClass} />
+                    <DatePicker value={formData.delivery_date} onChange={v => setFormData(prev => ({ ...prev, delivery_date: v }))} placeholder={language === 'fr' ? 'Selectionner' : 'Select date'} />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                       {language === 'fr' ? 'Date Expiration' : 'Expiration Date'}
                     </label>
-                    <input type="date" value={formData.expiration_date} onChange={e => setFormData(prev => ({ ...prev, expiration_date: e.target.value }))} className={inputClass} />
+                    <DatePicker value={formData.expiration_date} onChange={v => setFormData(prev => ({ ...prev, expiration_date: v }))} placeholder={language === 'fr' ? 'Selectionner' : 'Select date'} />
                   </div>
                 </div>
               </div>
 
               {/* Submit */}
-              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-slate-800/60">
                 {formError && (
                   <p className="flex-1 text-sm text-red-600 dark:text-red-400 self-center">{formError}</p>
                 )}
-                <button type="button" onClick={() => { setShowAddModal(false); setIsEditing(false); }} className="px-4 py-2 border border-gray-200 dark:border-gray-600 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
+                <button type="button" onClick={() => { setShowAddModal(false); setIsEditing(false); }} className="px-4 py-2 border border-gray-200 dark:border-slate-700 rounded-lg text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700">
                   {language === 'fr' ? 'Annuler' : 'Cancel'}
                 </button>
-                <button type="submit" className="px-6 py-2 bg-[var(--naftal-blue)] text-white rounded-lg text-sm font-medium hover:bg-[var(--naftal-dark-blue)]">
+                <button type="submit" className="px-6 py-2 bg-blue-500 text-white rounded-lg text-sm font-medium hover:bg-blue-600">
                   {language === 'fr' ? 'Enregistrer' : 'Save'}
                 </button>
               </div>

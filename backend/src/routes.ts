@@ -7,6 +7,7 @@ import { chargersRoutes } from './modules/chargers/chargers.routes';
 import { cardsRoutes } from './modules/cards/cards.routes';
 import { dashboardRoutes } from './modules/dashboard/dashboard.routes';
 import { auditLogsRoutes } from './modules/audit-logs/audit-logs.routes';
+import { notificationsRoutes } from './modules/notifications/notifications.routes';
 
 const apiRouter = Router();
 
@@ -18,5 +19,6 @@ apiRouter.use('/chargers', chargersRoutes);
 apiRouter.use('/cards', cardsRoutes);
 apiRouter.use('/dashboard', dashboardRoutes);
 apiRouter.use('/audit-logs', auditLogsRoutes);
+apiRouter.use('/notifications', notificationsRoutes);
 
 export { apiRouter };

@@ -8,12 +8,12 @@ interface PaginatedMeta {
 }
 
 export class ApiResponse {
-  static success<T>(res: Response, data: T, statusCode = 200) {
-    return res.status(statusCode).json({ success: true, data });
+  static success<T>(res: Response, data: T, message?: string, statusCode = 200) {
+    return res.status(statusCode).json({ success: true, data, ...(message ? { message } : {}) });
   }
 
-  static created<T>(res: Response, data: T) {
-    return res.status(201).json({ success: true, data });
+  static created<T>(res: Response, data: T, message?: string) {
+    return res.status(201).json({ success: true, data, ...(message ? { message } : {}) });
   }
 
   static paginated<T>(res: Response, data: T[], meta: PaginatedMeta) {

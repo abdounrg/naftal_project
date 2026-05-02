@@ -8,8 +8,14 @@ interface UseApiDataOptions {
 // Flatten nested objects so DataTable columns can access them as flat keys
 function flattenRow(row: Record<string, unknown>): Record<string, unknown> {
   const flat: Record<string, unknown> = { ...row };
+  // Flatten _count: { stations: 5, users: 2 } → _count_stations: 5, _count_users: 2
+  if (row._count && typeof row._count === 'object' && !Array.isArray(row._count)) {
+    for (const [subKey, subVal] of Object.entries(row._count as Record<string, unknown>)) {
+      flat[`_count_${subKey}`] = subVal;
+    }
+  }
   for (const [key, value] of Object.entries(row)) {
-    if (value && typeof value === 'object' && !Array.isArray(value) && key !== 'meta') {
+    if (value && typeof value === 'object' && !Array.isArray(value) && key !== 'meta' && key !== '_count') {
       const obj = value as Record<string, unknown>;
       if ('name' in obj) {
         // Objects with name: replace the key with the name string

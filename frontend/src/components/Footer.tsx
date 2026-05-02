@@ -1,6 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
-import { Facebook, Twitter, Linkedin, ChevronRight } from 'lucide-react';
+import { ChevronRight, Mail, Phone, MapPin } from 'lucide-react';
 import { useLanguage } from '../context/LanguageContext';
 
 const Footer = () => {
@@ -62,20 +62,6 @@ const Footer = () => {
               <p className="text-blue-200 text-sm leading-relaxed mb-6">
                 Plateforme de gestion electronique des activites de paiement pour les structures commerciales NAFTAL.
               </p>
-              <div className="flex gap-3">
-                {[Facebook, Twitter, Linkedin].map((Icon, index) => (
-                  <motion.a
-                    key={index}
-                    href="#"
-                    whileHover={{ scale: 1.1, backgroundColor: 'var(--naftal-yellow)', color: 'var(--naftal-dark-blue)' }}
-                    whileTap={{ scale: 0.95 }}
-                    transition={{ duration: 0.15 }}
-                    className="w-10 h-10 rounded-lg bg-white/10 flex items-center justify-center"
-                  >
-                    <Icon className="w-5 h-5" />
-                  </motion.a>
-                ))}
-              </div>
             </motion.div>
 
             {/* Quick Links */}
@@ -116,13 +102,16 @@ const Footer = () => {
               </h4>
               <ul className="space-y-4">
                 {[
-                  { label: t('cta.email'), value: 'contact@naftal-gap.dz' },
-                  { label: t('cta.phone'), value: '+213 23 XX XX XX' },
-                  { label: t('cta.address'), value: 'Alger, Algerie' },
+                  { label: t('cta.email'), value: 'contact@naftal-gap.dz', icon: Mail },
+                  { label: t('cta.phone'), value: '+213 23 XX XX XX', icon: Phone },
+                  { label: t('cta.address'), value: 'Naftal, Route des Dunes, BP 73 Chéraga, Alger', icon: MapPin },
                 ].map((contact) => (
                   <li key={contact.label}>
                     <p className="text-xs text-[var(--naftal-yellow)] mb-1">{contact.label}</p>
-                    <p className="text-sm">{contact.value}</p>
+                    <div className="flex items-start gap-2 text-sm">
+                      <contact.icon className="w-4 h-4 mt-0.5 text-[var(--naftal-yellow)] flex-shrink-0" />
+                      <p className="leading-relaxed">{contact.value}</p>
+                    </div>
                   </li>
                 ))}
               </ul>

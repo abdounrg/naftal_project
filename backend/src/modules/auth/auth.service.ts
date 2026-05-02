@@ -6,6 +6,8 @@ import { env } from '../../config/env';
 import { CONSTANTS } from '../../config/constants';
 import { AppError } from '../../utils/appError';
 import { AuditAction, AuditModule, AuditSeverity } from '@prisma/client';
+import { getEffectivePermissions } from '../../config/permissions';
+import { NotificationService } from '../../utils/notificationService';
 
 interface TokenPair {
   accessToken: string;
@@ -22,6 +24,12 @@ export class AuthService {
     const user = await prisma.user.findUnique({ where: { email } });
 
     if (!user) {
+      await NotificationService.notifyAdmins({
+        type: 'suspicious_activity',
+        title: 'Failed login: unknown account',
+        message: `Unknown email login attempt: ${email}`,
+        payload: { email, ipAddress, userAgent },
+      });
       throw AppError.unauthorized('Invalid email or password');
     }
 
@@ -50,6 +58,19 @@ export class AuthService {
       // Audit failed login
       await this.logAudit(user.id, user.name, user.role, AuditAction.login, AuditModule.auth, `Failed login attempt (${failedLogins})`, ipAddress, AuditSeverity.warning);
 
+      if (failedLogins >= 3) {
+        const suspiciousTitle = failedLogins >= CONSTANTS.MAX_FAILED_LOGINS
+          ? 'Account locked after failed logins'
+          : 'Repeated failed login attempts';
+
+        await NotificationService.notifyAdmins({
+          type: 'suspicious_activity',
+          title: suspiciousTitle,
+          message: `User ${user.email} failed login ${failedLogins} time(s)`,
+          payload: { userId: user.id, email: user.email, failedLogins, ipAddress, userAgent },
+        });
+      }
+
       throw AppError.unauthorized('Invalid email or password');
     }
 
@@ -65,7 +86,8 @@ export class AuthService {
     await this.logAudit(user.id, user.name, user.role, AuditAction.login, AuditModule.auth, 'Successful login', ipAddress, AuditSeverity.info);
 
     const { passwordHash: _, failedLogins: _f, lockedUntil: _l, ...safeUser } = user;
-    return { user: { ...safeUser, lastLoginAt: new Date() }, tokens };
+    const effectivePermissions = getEffectivePermissions(user.role, user.permissions);
+    return { user: { ...safeUser, lastLoginAt: new Date(), permissions: effectivePermissions }, tokens };
   }
 
   static async refresh(
@@ -97,7 +119,7 @@ export class AuthService {
     });
 
     // Issue new pair in same family
-    const user = storedToken.user;
+    const { user } = storedToken;
     return this.generateTokenPair(user, ipAddress, userAgent, storedToken.family);
   }
 
@@ -127,7 +149,43 @@ export class AuthService {
     });
     if (!user) throw AppError.notFound('User not found');
     const { passwordHash: _, failedLogins: _f, lockedUntil: _l, ...safeUser } = user;
-    return safeUser;
+    const effectivePermissions = getEffectivePermissions(user.role, user.permissions);
+    return { ...safeUser, permissions: effectivePermissions };
+  }
+
+  static async createLoginSupportRequest(input: {
+    requesterName: string;
+    requesterEmail: string;
+    requesterPhone?: string;
+    problemDescription: string;
+  }) {
+    const existingUser = await prisma.user.findUnique({
+      where: { email: input.requesterEmail },
+      select: { id: true },
+    });
+
+    const request = await prisma.loginSupportRequest.create({
+      data: {
+        requesterName: input.requesterName,
+        requesterEmail: input.requesterEmail,
+        requesterPhone: input.requesterPhone,
+        problemDescription: input.problemDescription,
+        createdByUserId: existingUser?.id,
+      },
+    });
+
+    await NotificationService.notifyAdmins({
+      type: 'login_support_request',
+      title: 'New login support request',
+      message: `${input.requesterName} reported a login issue`,
+      payload: {
+        requestId: request.id,
+        requesterName: input.requesterName,
+        requesterEmail: input.requesterEmail,
+      },
+    });
+
+    return request;
   }
 
   private static async generateTokenPair(
