@@ -3,6 +3,13 @@ import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { parsePagination, buildPaginationMeta, parseSorting } from '../../utils/pagination';
 import { CreateTpeInput, UpdateTpeInput } from './tpe.validators';
+import {
+  AuthUserScope,
+  tpeScopeWhere,
+  tpeMaintenanceScopeWhere,
+  tpeReturnScopeWhere,
+  tpeReformScopeWhere,
+} from '../../lib/authScope';
 
 const TPE_INCLUDE = {
   station: { select: { id: true, name: true, code: true, structure: { select: { id: true, name: true, district: { select: { id: true, name: true } } } } } },
@@ -12,10 +19,10 @@ const TPE_SORTABLE = ['serial', 'model', 'operator', 'status', 'receptionDate', 
 
 export class TpeService {
   // ─── Stock (all TPEs) ───
-  static async list(query: any) {
+  static async list(query: any, user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
     const { orderBy } = parseSorting(query, TPE_SORTABLE);
-    const where: Prisma.TpeWhereInput = {};
+    const where: Prisma.TpeWhereInput = { AND: [tpeScopeWhere(user)] };
 
     if (query.search) {
       where.OR = [
@@ -69,9 +76,9 @@ export class TpeService {
     return { data: mapped, meta: buildPaginationMeta(total, page, per_page) };
   }
 
-  static async getById(id: number) {
-    const tpe = await prisma.tpe.findUnique({
-      where: { id },
+  static async getById(id: number, user?: AuthUserScope) {
+    const tpe = await prisma.tpe.findFirst({
+      where: { id, AND: [tpeScopeWhere(user)] },
       include: {
         ...TPE_INCLUDE,
         maintenance: { orderBy: { createdAt: 'desc' }, take: 5 },
@@ -93,8 +100,8 @@ export class TpeService {
     return prisma.tpe.create({ data: { ...rest, stationId: resolvedStationId }, include: TPE_INCLUDE });
   }
 
-  static async update(id: number, input: UpdateTpeInput) {
-    await this.getById(id);
+  static async update(id: number, input: UpdateTpeInput, user?: AuthUserScope) {
+    await this.getById(id, user);
     const { stationCode, ...rest } = input as any;
     let data: any = rest;
     if (stationCode && !rest.stationId) {
@@ -105,18 +112,23 @@ export class TpeService {
     return prisma.tpe.update({ where: { id }, data, include: TPE_INCLUDE });
   }
 
-  static async delete(id: number) {
-    await this.getById(id);
+  static async delete(id: number, user?: AuthUserScope) {
+    await this.getById(id, user);
     await prisma.tpe.delete({ where: { id } });
   }
 
   // ─── TPEs by structure code ───
-  static async listByStructure(structureCode: string) {
+  static async listByStructure(structureCode: string, user?: AuthUserScope) {
     const structure = await prisma.structure.findUnique({
       where: { code: structureCode },
-      select: { id: true, stations: { select: { id: true } } },
+      select: { id: true, districtId: true, stations: { select: { id: true } } },
     });
     if (!structure) return [];
+    // Scope check: user with district/structure scope cannot read other tenants' structures
+    if (user) {
+      if (user.role === 'district_member' && user.districtId !== structure.districtId) return [];
+      if ((user.role === 'agency_member' || user.role === 'antenna_member') && user.structureId !== structure.id) return [];
+    }
     const stationIds = structure.stations.map(s => s.id);
     if (stationIds.length === 0) return [];
 
@@ -134,9 +146,9 @@ export class TpeService {
   }
 
   // ─── Maintenance ───
-  static async listMaintenance(query: any) {
+  static async listMaintenance(query: any, user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
-    const where: Prisma.TpeMaintenanceWhereInput = {};
+    const where: Prisma.TpeMaintenanceWhereInput = { AND: [tpeMaintenanceScopeWhere(user)] };
 
     if (query.search) {
       where.tpe = { serial: { contains: query.search, mode: 'insensitive' } };
@@ -193,23 +205,73 @@ export class TpeService {
     const station = await prisma.station.findUnique({ where: { code: input.station_code } });
     if (!station) throw AppError.notFound('Station not found with code: ' + input.station_code);
 
-    // Update TPE status to en_maintenance
-    await prisma.tpe.update({ where: { id: tpe.id }, data: { status: TpeStatus.en_maintenance } });
+    const mode = (input.operation_mode || '').trim();
 
-    return prisma.tpeMaintenance.create({
-      data: {
-        tpeId: tpe.id,
-        stationId: station.id,
-        operationMode: input.operation_mode || '',
-        breakdownDate: input.breakdown_date,
-        problemType: input.problem_type || null,
-        diagnostic: input.diagnostic || null,
-        status: input.status || 'en_panne',
-      },
-      include: {
-        tpe: { select: { id: true, serial: true, model: true } },
-        station: { select: { id: true, name: true, code: true, structure: { select: { id: true, name: true, code: true, district: { select: { id: true, name: true } } } } } },
-      },
+    // Non-repair modes are immediate operations: log a maintenance record AND transition the TPE
+    // to its target status without keeping it in maintenance.
+    //   - Restitution           → TPE returns to en_stock
+    //   - Reconfiguration       → TPE goes back to en_service
+    //   - Changement raison sociale → TPE stays in en_service (business name change only)
+    const immediateModes: Record<string, { tpeStatus: TpeStatus; recordStatus: any }> = {
+      'Restitution': { tpeStatus: TpeStatus.en_stock, recordStatus: 'retourne' },
+      'Reconfiguration': { tpeStatus: TpeStatus.en_service, recordStatus: 'reconfigure' },
+      'Changement raison sociale': { tpeStatus: TpeStatus.en_service, recordStatus: 'reconfigure' },
+    };
+
+    if (mode in immediateModes) {
+      const { tpeStatus, recordStatus } = immediateModes[mode];
+      // Optional transfer-target station for Reconfiguration (TPE moves to a new station).
+      let newStationId: number | null = null;
+      if (mode === 'Reconfiguration' && input.new_station_code) {
+        const newStation = await prisma.station.findUnique({ where: { code: input.new_station_code } });
+        if (!newStation) throw AppError.notFound('New station not found with code: ' + input.new_station_code);
+        newStationId = newStation.id;
+      }
+      return prisma.$transaction(async (tx) => {
+        const record = await tx.tpeMaintenance.create({
+          data: {
+            tpeId: tpe.id,
+            stationId: station.id,
+            operationMode: mode,
+            breakdownDate: input.breakdown_date,
+            problemType: input.problem_type || null,
+            diagnostic: input.diagnostic || null,
+            status: recordStatus,
+          },
+          include: {
+            tpe: { select: { id: true, serial: true, model: true } },
+            station: { select: { id: true, name: true, code: true, structure: { select: { id: true, name: true, code: true, district: { select: { id: true, name: true } } } } } },
+          },
+        });
+        await tx.tpe.update({
+          where: { id: tpe.id },
+          data: {
+            status: tpeStatus,
+            ...(newStationId ? { stationId: newStationId } : {}),
+          },
+        });
+        return record;
+      });
+    }
+
+    // Default (Reparation): wrap status update + maintenance creation atomically.
+    return prisma.$transaction(async (tx) => {
+      await tx.tpe.update({ where: { id: tpe.id }, data: { status: TpeStatus.en_maintenance } });
+      return tx.tpeMaintenance.create({
+        data: {
+          tpeId: tpe.id,
+          stationId: station.id,
+          operationMode: mode,
+          breakdownDate: input.breakdown_date,
+          problemType: input.problem_type || null,
+          diagnostic: input.diagnostic || null,
+          status: input.status || 'en_panne',
+        },
+        include: {
+          tpe: { select: { id: true, serial: true, model: true } },
+          station: { select: { id: true, name: true, code: true, structure: { select: { id: true, name: true, code: true, district: { select: { id: true, name: true } } } } } },
+        },
+      });
     });
   }
 
@@ -225,23 +287,27 @@ export class TpeService {
     const newStatus = input.status;
 
     if (newStatus && backInServiceStatuses.includes(newStatus)) {
-      // TPE goes back to en_service, remove maintenance record
-      await prisma.tpe.update({ where: { id: record.tpeId }, data: { status: TpeStatus.en_service } });
-      await prisma.tpeMaintenance.delete({ where: { id } });
+      // TPE goes back to en_service, remove maintenance record (atomic)
+      await prisma.$transaction([
+        prisma.tpe.update({ where: { id: record.tpeId }, data: { status: TpeStatus.en_service } }),
+        prisma.tpeMaintenance.delete({ where: { id } }),
+      ]);
       return { id, deleted: true, tpeStatus: 'en_service' };
     }
 
     if (newStatus && reformStatuses.includes(newStatus)) {
-      // TPE is reformed → update status, create reform record, delete from maintenance
-      await prisma.tpe.update({ where: { id: record.tpeId }, data: { status: TpeStatus.reforme } });
-      await prisma.tpeReform.create({
-        data: {
-          tpeId: record.tpeId,
-          reformDate: new Date(),
-          reason: newStatus === 'irreparable' ? 'Irreparable - auto reformed from maintenance' : 'Reformed from maintenance',
-        },
-      });
-      await prisma.tpeMaintenance.delete({ where: { id } });
+      // TPE is reformed → update status, create reform record, delete from maintenance (atomic)
+      await prisma.$transaction([
+        prisma.tpe.update({ where: { id: record.tpeId }, data: { status: TpeStatus.reforme } }),
+        prisma.tpeReform.create({
+          data: {
+            tpeId: record.tpeId,
+            reformDate: new Date(),
+            reason: newStatus === 'irreparable' ? 'Irreparable - auto reformed from maintenance' : 'Reformed from maintenance',
+          },
+        }),
+        prisma.tpeMaintenance.delete({ where: { id } }),
+      ]);
       return { id, deleted: true, tpeStatus: 'reforme' };
     }
 
@@ -273,12 +339,13 @@ export class TpeService {
     const record = await prisma.tpeMaintenance.findUnique({ where: { id } });
     if (!record) throw AppError.notFound('Maintenance record not found');
 
-    await prisma.tpeMaintenance.delete({ where: { id } });
-
-    await prisma.tpe.updateMany({
-      where: { id: record.tpeId, status: TpeStatus.en_maintenance },
-      data: { status: TpeStatus.en_stock },
-    });
+    await prisma.$transaction([
+      prisma.tpeMaintenance.delete({ where: { id } }),
+      prisma.tpe.updateMany({
+        where: { id: record.tpeId, status: TpeStatus.en_maintenance },
+        data: { status: TpeStatus.en_stock },
+      }),
+    ]);
   }
 
   static async getDistinctProblemTypes() {
@@ -292,11 +359,13 @@ export class TpeService {
   }
 
   // ─── Returns ───
-  static async listReturns(query: any) {
+  static async listReturns(query: any, user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
+    const where: Prisma.TpeReturnWhereInput = tpeReturnScopeWhere(user);
 
     const [data, total] = await Promise.all([
       prisma.tpeReturn.findMany({
+        where,
         skip, take,
         orderBy: { createdAt: 'desc' },
         include: {
@@ -305,7 +374,7 @@ export class TpeService {
           newStation: { select: { id: true, name: true, code: true } },
         },
       }),
-      prisma.tpeReturn.count(),
+      prisma.tpeReturn.count({ where }),
     ]);
 
     const mapped = data.map(d => ({
@@ -357,27 +426,35 @@ export class TpeService {
       newStationId = station.id;
     }
 
-    // Move TPE to new station if specified
-    if (newStationId) {
-      await prisma.tpe.update({
-        where: { id: tpeId },
-        data: { stationId: newStationId },
-      });
-    }
+    // Move TPE to new station and mark as 'a_retourner' so the workflow status is consistent.
+    // Use a transaction so partial state cannot persist if the second write fails.
+    return prisma.$transaction(async (tx) => {
+      if (newStationId) {
+        await tx.tpe.update({
+          where: { id: tpeId },
+          data: { stationId: newStationId, status: TpeStatus.a_retourner },
+        });
+      } else {
+        await tx.tpe.update({
+          where: { id: tpeId },
+          data: { status: TpeStatus.a_retourner },
+        });
+      }
 
-    return prisma.tpeReturn.create({
-      data: {
-        tpeId,
-        oldStationId: oldStationId || null,
-        newStationId: newStationId || null,
-        returnReason: input.return_reason || input.reason || '',
-        trsSt1Str: input.returnDate || input.return_date ? new Date(input.returnDate || input.return_date) : new Date(),
-      },
-      include: {
-        tpe: { select: { id: true, serial: true, model: true } },
-        oldStation: { select: { id: true, name: true, code: true } },
-        newStation: { select: { id: true, name: true, code: true } },
-      },
+      return tx.tpeReturn.create({
+        data: {
+          tpeId,
+          oldStationId: oldStationId || null,
+          newStationId: newStationId || null,
+          returnReason: input.return_reason || input.reason || '',
+          trsSt1Str: input.returnDate || input.return_date ? new Date(input.returnDate || input.return_date) : new Date(),
+        },
+        include: {
+          tpe: { select: { id: true, serial: true, model: true } },
+          oldStation: { select: { id: true, name: true, code: true } },
+          newStation: { select: { id: true, name: true, code: true } },
+        },
+      });
     });
   }
 
@@ -472,76 +549,94 @@ export class TpeService {
       }
     }
 
-    const transfer = await prisma.tpeTransfer.create({
-      data: {
-        exitDate: exitDate ? new Date(exitDate) : new Date(),
-        receptionDate: receptionDate ? new Date(receptionDate) : null,
-        source: transferredFrom,
-        destination: transferredTo,
-        discharge,
-        beneficiaryName,
-        beneficiaryFunction,
-        btsNumber,
-        nbrTpe: tpeIds.length || parseInt(input.nbr_tpe) || 0,
-        items: {
-          create: tpeIds.map((tpeId: number) => ({ tpeId })),
+    const transfer = await prisma.$transaction(async (tx) => {
+      const created = await tx.tpeTransfer.create({
+        data: {
+          exitDate: exitDate ? new Date(exitDate) : new Date(),
+          receptionDate: receptionDate ? new Date(receptionDate) : null,
+          source: transferredFrom,
+          destination: transferredTo,
+          discharge,
+          beneficiaryName,
+          beneficiaryFunction,
+          btsNumber,
+          nbrTpe: tpeIds.length || parseInt(input.nbr_tpe) || 0,
+          items: {
+            create: tpeIds.map((tpeId: number) => ({ tpeId })),
+          },
         },
-      },
-      include: {
-        items: {
-          include: { tpe: { select: { id: true, serial: true, model: true } } },
+        include: {
+          items: {
+            include: { tpe: { select: { id: true, serial: true, model: true } } },
+          },
         },
-      },
-    });
+      });
 
-    // Update TPE statuses based on direction
-    if (tpeIds.length > 0) {
-      const isDpeToStructure = transferredFrom.toLowerCase().includes('dpe');
-      if (isDpeToStructure && receptionDate) {
-        // DPE → Structure with reception date: TPEs become en_service
-        await prisma.tpe.updateMany({
+      if (tpeIds.length > 0) {
+        const isDpeToStructure = transferredFrom.toLowerCase().includes('dpe');
+        const newStatus = isDpeToStructure && receptionDate ? TpeStatus.en_service : TpeStatus.en_transfert;
+        await tx.tpe.updateMany({
           where: { id: { in: tpeIds } },
-          data: { status: TpeStatus.en_service },
-        });
-      } else {
-        // Otherwise: mark as en_transfert until reception
-        await prisma.tpe.updateMany({
-          where: { id: { in: tpeIds } },
-          data: { status: TpeStatus.en_transfert },
+          data: { status: newStatus },
         });
       }
-    }
+
+      return created;
+    });
 
     return transfer;
   }
 
   static async updateTransfer(id: number, input: any) {
-    const transfer = await prisma.tpeTransfer.findUnique({ where: { id } });
+    const transfer = await prisma.tpeTransfer.findUnique({
+      where: { id },
+      include: { items: { select: { tpeId: true } } },
+    });
     if (!transfer) throw AppError.notFound('TPE transfer not found');
 
     const exitDate = input.exitDate || input.exit_date || transfer.exitDate;
-    const receptionDate = input.receptionDate || input.reception_date || null;
+    const receptionDateInput = input.receptionDate || input.reception_date;
+    const hasReceptionDateUpdate = receptionDateInput !== undefined;
+    const newReceptionDate = receptionDateInput ? new Date(receptionDateInput) : null;
     const source = input.transferredFrom || input.source;
     const destination = input.transferredTo || input.destination;
 
-    return prisma.tpeTransfer.update({
-      where: { id },
-      data: {
-        source: source ?? undefined,
-        destination: destination ?? undefined,
-        beneficiaryName: input.beneficiaryName || input.beneficiary_name || undefined,
-        beneficiaryFunction: input.beneficiaryFunction || input.beneficiary_function || undefined,
-        exitDate: exitDate ? new Date(exitDate) : undefined,
-        receptionDate: receptionDate ? new Date(receptionDate) : null,
-        discharge: input.discharge ?? undefined,
-        btsNumber: input.btsNumber || input.bts_number || undefined,
-        nbrTpe: input.nbr_tpe ? parseInt(input.nbr_tpe, 10) : undefined,
-      },
-      include: {
-        items: {
-          include: { tpe: { select: { id: true, serial: true, model: true } } },
+    return prisma.$transaction(async (tx) => {
+      const updated = await tx.tpeTransfer.update({
+        where: { id },
+        data: {
+          source: source ?? undefined,
+          destination: destination ?? undefined,
+          beneficiaryName: input.beneficiaryName || input.beneficiary_name || undefined,
+          beneficiaryFunction: input.beneficiaryFunction || input.beneficiary_function || undefined,
+          exitDate: exitDate ? new Date(exitDate) : undefined,
+          receptionDate: hasReceptionDateUpdate ? newReceptionDate : undefined,
+          discharge: input.discharge ?? undefined,
+          btsNumber: input.btsNumber || input.bts_number || undefined,
+          nbrTpe: input.nbr_tpe ? parseInt(input.nbr_tpe, 10) : undefined,
         },
-      },
+        include: {
+          items: {
+            include: { tpe: { select: { id: true, serial: true, model: true } } },
+          },
+        },
+      });
+
+      // If reception date was just added on a DPE→Structure transfer, flip
+      // any still-en_transfert TPEs to en_service. We do not flip back when a
+      // reception date is cleared, to avoid surprising state regressions.
+      if (hasReceptionDateUpdate && newReceptionDate && transfer.items.length > 0) {
+        const isDpeToStructure = (updated.source || '').toLowerCase().includes('dpe');
+        if (isDpeToStructure) {
+          const tpeIds = transfer.items.map(i => i.tpeId);
+          await tx.tpe.updateMany({
+            where: { id: { in: tpeIds }, status: TpeStatus.en_transfert },
+            data: { status: TpeStatus.en_service },
+          });
+        }
+      }
+
+      return updated;
     });
   }
 
@@ -552,31 +647,33 @@ export class TpeService {
     });
     if (!transfer) throw AppError.notFound('TPE transfer not found');
 
-    // Restore TPE statuses before deleting
     const tpeIds = transfer.items.map((i: any) => i.tpeId);
-    if (tpeIds.length > 0) {
-      await prisma.tpe.updateMany({
-        where: { id: { in: tpeIds }, status: TpeStatus.en_transfert },
-        data: { status: TpeStatus.en_stock },
-      });
-    }
-
-    await prisma.tpeTransfer.delete({ where: { id } });
+    await prisma.$transaction([
+      ...(tpeIds.length > 0
+        ? [prisma.tpe.updateMany({
+            where: { id: { in: tpeIds }, status: TpeStatus.en_transfert },
+            data: { status: TpeStatus.en_stock },
+          })]
+        : []),
+      prisma.tpeTransfer.delete({ where: { id } }),
+    ]);
   }
 
   // ─── Reform ───
-  static async listReforms(query: any) {
+  static async listReforms(query: any, user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
+    const where: Prisma.TpeReformWhereInput = tpeReformScopeWhere(user);
 
     const [data, total] = await Promise.all([
       prisma.tpeReform.findMany({
+        where,
         skip, take,
         orderBy: { reformDate: 'desc' },
         include: {
           tpe: { select: { id: true, serial: true, model: true, station: { select: { id: true, name: true, code: true, structure: { select: { id: true, name: true, code: true, district: { select: { id: true, name: true } } } } } } } },
         },
       }),
-      prisma.tpeReform.count(),
+      prisma.tpeReform.count({ where }),
     ]);
 
     const mapped = data.map(d => ({
@@ -604,22 +701,21 @@ export class TpeService {
     }
     if (!tpeId) throw AppError.badRequest('Either tpeId or serial is required');
 
-    // Update TPE status to reformed
-    await prisma.tpe.update({ where: { id: tpeId }, data: { status: TpeStatus.reforme } });
-
-    // Clean up any existing maintenance records
-    await prisma.tpeMaintenance.deleteMany({ where: { tpeId } });
-
-    return prisma.tpeReform.create({
-      data: {
-        tpeId,
-        reformPv: input.reformPv || input.reform_pv || null,
-        reformDate: input.reformDate || input.reform_date || new Date(),
-        reason: input.reason || null,
-      },
-      include: {
-        tpe: { select: { id: true, serial: true, model: true } },
-      },
+    // Atomically update TPE status, clean up maintenance records, and create reform.
+    return prisma.$transaction(async (tx) => {
+      await tx.tpe.update({ where: { id: tpeId }, data: { status: TpeStatus.reforme } });
+      await tx.tpeMaintenance.deleteMany({ where: { tpeId } });
+      return tx.tpeReform.create({
+        data: {
+          tpeId,
+          reformPv: input.reformPv || input.reform_pv || null,
+          reformDate: input.reformDate || input.reform_date || new Date(),
+          reason: input.reason || null,
+        },
+        include: {
+          tpe: { select: { id: true, serial: true, model: true } },
+        },
+      });
     });
   }
 
@@ -644,12 +740,12 @@ export class TpeService {
     const record = await prisma.tpeReform.findUnique({ where: { id } });
     if (!record) throw AppError.notFound('Reform record not found');
 
-    await prisma.tpeReform.delete({ where: { id } });
-
-    // If no remaining reform records for this TPE, restore to stock.
-    const remaining = await prisma.tpeReform.count({ where: { tpeId: record.tpeId } });
-    if (remaining === 0) {
-      await prisma.tpe.update({ where: { id: record.tpeId }, data: { status: TpeStatus.en_stock } });
-    }
+    await prisma.$transaction(async (tx) => {
+      await tx.tpeReform.delete({ where: { id } });
+      const remaining = await tx.tpeReform.count({ where: { tpeId: record.tpeId } });
+      if (remaining === 0) {
+        await tx.tpe.update({ where: { id: record.tpeId }, data: { status: TpeStatus.en_stock } });
+      }
+    });
   }
 }

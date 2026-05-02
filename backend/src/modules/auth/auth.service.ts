@@ -85,7 +85,13 @@ export class AuthService {
     // Audit successful login
     await this.logAudit(user.id, user.name, user.role, AuditAction.login, AuditModule.auth, 'Successful login', ipAddress, AuditSeverity.info);
 
-    const { passwordHash: _, failedLogins: _f, lockedUntil: _l, ...safeUser } = user;
+    // Reload with relations so the client gets structure + district immediately
+    const fullUser = await prisma.user.findUnique({
+      where: { id: user.id },
+      include: { district: true, structure: true },
+    });
+    const safeBase = fullUser ?? user;
+    const { passwordHash: _, failedLogins: _f, lockedUntil: _l, ...safeUser } = safeBase as any;
     const effectivePermissions = getEffectivePermissions(user.role, user.permissions);
     return { user: { ...safeUser, lastLoginAt: new Date(), permissions: effectivePermissions }, tokens };
   }
@@ -153,6 +159,46 @@ export class AuthService {
     return { ...safeUser, permissions: effectivePermissions };
   }
 
+  static async changePassword(
+    userId: number,
+    currentPassword: string,
+    newPassword: string,
+    ipAddress: string,
+  ) {
+    const user = await prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw AppError.notFound('User not found');
+    if (user.status !== 'active') throw AppError.forbidden('Account is not active');
+
+    const valid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!valid) {
+      await this.logAudit(
+        user.id, user.name, user.role,
+        AuditAction.update, AuditModule.auth,
+        'Failed password change: wrong current password',
+        ipAddress, AuditSeverity.warning,
+      );
+      throw AppError.unauthorized('Current password is incorrect');
+    }
+
+    const newHash = await bcrypt.hash(newPassword, CONSTANTS.BCRYPT_ROUNDS);
+
+    // Update password and revoke all refresh tokens (force re-auth on other devices).
+    await prisma.$transaction([
+      prisma.user.update({ where: { id: userId }, data: { passwordHash: newHash } }),
+      prisma.refreshToken.updateMany({
+        where: { userId, revokedAt: null },
+        data: { revokedAt: new Date() },
+      }),
+    ]);
+
+    await this.logAudit(
+      user.id, user.name, user.role,
+      AuditAction.update, AuditModule.auth,
+      'Password changed; all sessions revoked',
+      ipAddress, AuditSeverity.info,
+    );
+  }
+
   static async createLoginSupportRequest(input: {
     requesterName: string;
     requesterEmail: string;
@@ -186,6 +232,29 @@ export class AuthService {
     });
 
     return request;
+  }
+
+  static async updateAvatar(userId: number, avatarDataUrl: string) {
+    if (!avatarDataUrl || typeof avatarDataUrl !== 'string') {
+      throw AppError.badRequest('avatarUrl is required');
+    }
+    const trimmed = avatarDataUrl.trim();
+    // Accept only image data URLs to avoid stored XSS / huge payloads
+    const dataUrlRegex = /^data:image\/(png|jpe?g|webp|gif);base64,[A-Za-z0-9+/=]+$/;
+    if (!dataUrlRegex.test(trimmed)) {
+      throw AppError.badRequest('Invalid image data URL');
+    }
+    // Limit raw base64 length (~3MB after decoding)
+    if (trimmed.length > 4_500_000) {
+      throw AppError.badRequest('Image too large');
+    }
+    await prisma.user.update({ where: { id: userId }, data: { avatarUrl: trimmed } });
+    return { avatarUrl: trimmed };
+  }
+
+  static async removeAvatar(userId: number) {
+    await prisma.user.update({ where: { id: userId }, data: { avatarUrl: null } });
+    return { avatarUrl: null };
   }
 
   private static async generateTokenPair(

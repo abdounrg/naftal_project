@@ -2,6 +2,29 @@ import { TpeStatus, MaintenanceStatus } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 
 export class DashboardService {
+  static async getPublicStats() {
+    const [totalTpes, tpesByStatus, totalStructures, maintenanceActive] = await Promise.all([
+      prisma.tpe.count(),
+      prisma.tpe.groupBy({ by: ['status'], _count: true }),
+      prisma.structure.count(),
+      prisma.tpeMaintenance.count({
+        where: { status: { in: [MaintenanceStatus.en_panne, MaintenanceStatus.trs_envoye, MaintenanceStatus.trs_recu, MaintenanceStatus.envoye_fournisseur] } },
+      }),
+    ]);
+    const statusMap: Record<string, number> = {};
+    tpesByStatus.forEach((s) => { statusMap[s.status] = s._count; });
+    const inService = statusMap[TpeStatus.en_service] || 0;
+    const availability = totalTpes > 0 ? Math.round((inService / totalTpes) * 100) : 0;
+    return {
+      tpeTotal: totalTpes,
+      tpeInService: inService,
+      tpeInMaintenance: statusMap[TpeStatus.en_maintenance] || 0,
+      structures: totalStructures,
+      availability,
+      activeMaintenance: maintenanceActive,
+    };
+  }
+
   static async getStats() {
     const [
       totalTpes,

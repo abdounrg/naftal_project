@@ -10,12 +10,12 @@ const parseId = (id: string | string[]) => parseInt(id as string, 10);
 export class TpeController {
   // ─── Stock ───
   static list = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await TpeService.list(req.query);
+    const result = await TpeService.list(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
   static getById = asyncWrapper(async (req: Request, res: Response) => {
-    const tpe = await TpeService.getById(parseId(req.params.id));
+    const tpe = await TpeService.getById(parseId(req.params.id), req.user);
     ApiResponse.success(res, tpe);
   });
 
@@ -26,27 +26,27 @@ export class TpeController {
   });
 
   static update = asyncWrapper(async (req: Request, res: Response) => {
-    const tpe = await TpeService.update(parseId(req.params.id), req.body);
+    const tpe = await TpeService.update(parseId(req.params.id), req.body, req.user);
     logAudit(req, { action: AuditAction.update, module: AuditModule.tpe, target: `tpe:${tpe.id}`, details: `Updated TPE ${tpe.serial}` });
     ApiResponse.success(res, tpe);
   });
 
   static delete = asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
-    await TpeService.delete(id);
+    await TpeService.delete(id, req.user);
     logAudit(req, { action: AuditAction.delete, module: AuditModule.tpe, target: `tpe:${id}`, details: `Deleted TPE id=${id}`, severity: 'warning' as any });
     ApiResponse.noContent(res);
   });
 
   static listByStructure = asyncWrapper(async (req: Request, res: Response) => {
     const code = req.params.code as string;
-    const data = await TpeService.listByStructure(code);
+    const data = await TpeService.listByStructure(code, req.user);
     ApiResponse.success(res, data);
   });
 
   // ─── Maintenance ───
   static listMaintenance = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await TpeService.listMaintenance(req.query);
+    const result = await TpeService.listMaintenance(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
@@ -76,7 +76,7 @@ export class TpeController {
 
   // ─── Returns ───
   static listReturns = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await TpeService.listReturns(req.query);
+    const result = await TpeService.listReturns(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
@@ -126,13 +126,13 @@ export class TpeController {
 
   // ─── Reform ───
   static listReforms = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await TpeService.listReforms(req.query);
+    const result = await TpeService.listReforms(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
   static createReform = asyncWrapper(async (req: Request, res: Response) => {
     const record = await TpeService.createReform(req.body);
-    logAudit(req, { action: AuditAction.delete, module: AuditModule.tpe, target: `reform:${record.id}`, details: `TPE marked for reform`, severity: 'warning' as any });
+    logAudit(req, { action: AuditAction.create, module: AuditModule.tpe, target: `reform:${record.id}`, details: `TPE marked for reform`, severity: 'warning' as any });
     ApiResponse.created(res, record);
   });
 

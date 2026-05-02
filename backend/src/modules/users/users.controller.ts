@@ -10,12 +10,12 @@ const parseId = (id: string | string[]) => parseInt(id as string, 10);
 
 export class UsersController {
   static list = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await UsersService.list(req.query);
+    const result = await UsersService.list(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
   static getById = asyncWrapper(async (req: Request, res: Response) => {
-    const user = await UsersService.getById(parseId(req.params.id));
+    const user = await UsersService.getById(parseId(req.params.id), req.user);
     ApiResponse.success(res, user);
   });
 
@@ -40,7 +40,7 @@ export class UsersController {
   });
 
   static listPending = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await UsersService.listPending(req.query);
+    const result = await UsersService.listPending(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
@@ -89,14 +89,14 @@ export class UsersController {
   });
 
   static update = asyncWrapper(async (req: Request, res: Response) => {
-    const user = await UsersService.update(parseId(req.params.id), req.body);
+    const user = await UsersService.update(parseId(req.params.id), req.body, req.user);
     logAudit(req, { action: AuditAction.update, module: AuditModule.users, target: `user:${user.id}`, details: `Updated user ${user.name}` });
     ApiResponse.success(res, user);
   });
 
   static delete = asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
-    await UsersService.delete(id);
+    await UsersService.delete(id, req.user);
     logAudit(req, { action: AuditAction.delete, module: AuditModule.users, target: `user:${id}`, details: `Deleted user id=${id}`, severity: 'warning' as any });
     ApiResponse.noContent(res);
   });

@@ -34,12 +34,12 @@ export class StructuresController {
 
   // Structures
   static listStructures = asyncWrapper(async (req: Request, res: Response) => {
-    const data = await StructuresService.listStructures(req.query);
+    const data = await StructuresService.listStructures(req.query, req.user);
     ApiResponse.success(res, data);
   });
 
   static getStructure = asyncWrapper(async (req: Request, res: Response) => {
-    const data = await StructuresService.getStructure(parseId(req.params.id));
+    const data = await StructuresService.getStructure(parseId(req.params.id), req.user);
     ApiResponse.success(res, data);
   });
 
@@ -50,44 +50,44 @@ export class StructuresController {
   });
 
   static updateStructure = asyncWrapper(async (req: Request, res: Response) => {
-    const data = await StructuresService.updateStructure(parseId(req.params.id), req.body);
+    const data = await StructuresService.updateStructure(parseId(req.params.id), req.body, req.user);
     logAudit(req, { action: AuditAction.update, module: AuditModule.structures, target: `structure:${data.id}`, details: `Updated structure ${data.name}` });
     ApiResponse.success(res, data);
   });
 
   static deleteStructure = asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
-    await StructuresService.deleteStructure(id);
+    await StructuresService.deleteStructure(id, req.user);
     logAudit(req, { action: AuditAction.delete, module: AuditModule.structures, target: `structure:${id}`, details: `Deleted structure id=${id}`, severity: 'warning' as any });
     ApiResponse.noContent(res);
   });
 
   // Stations
   static listStations = asyncWrapper(async (req: Request, res: Response) => {
-    const data = await StructuresService.listStations(req.query);
+    const data = await StructuresService.listStations(req.query, req.user);
     ApiResponse.success(res, data);
   });
 
   static getStation = asyncWrapper(async (req: Request, res: Response) => {
-    const data = await StructuresService.getStation(parseId(req.params.id));
+    const data = await StructuresService.getStation(parseId(req.params.id), req.user);
     ApiResponse.success(res, data);
   });
 
   static createStation = asyncWrapper(async (req: Request, res: Response) => {
-    const data = await StructuresService.createStation(req.body);
+    const data = await StructuresService.createStation(req.body, req.user);
     logAudit(req, { action: AuditAction.create, module: AuditModule.structures, target: `station:${data.id}`, details: `Created station ${data.name} (${data.code})` });
     ApiResponse.created(res, data);
   });
 
   static updateStation = asyncWrapper(async (req: Request, res: Response) => {
-    const data = await StructuresService.updateStation(parseId(req.params.id), req.body);
+    const data = await StructuresService.updateStation(parseId(req.params.id), req.body, req.user);
     logAudit(req, { action: AuditAction.update, module: AuditModule.structures, target: `station:${data.id}`, details: `Updated station ${data.name}` });
     ApiResponse.success(res, data);
   });
 
   static deleteStation = asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
-    await StructuresService.deleteStation(id);
+    await StructuresService.deleteStation(id, req.user);
     logAudit(req, { action: AuditAction.delete, module: AuditModule.structures, target: `station:${id}`, details: `Deleted station id=${id}`, severity: 'warning' as any });
     ApiResponse.noContent(res);
   });

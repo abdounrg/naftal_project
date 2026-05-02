@@ -10,12 +10,12 @@ const parseId = (id: string | string[]) => parseInt(id as string, 10);
 export class CardsController {
   // ─── Stock ───
   static list = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await CardsService.list(req.query);
+    const result = await CardsService.list(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
   static getById = asyncWrapper(async (req: Request, res: Response) => {
-    const card = await CardsService.getById(parseId(req.params.id));
+    const card = await CardsService.getById(parseId(req.params.id), req.user);
     ApiResponse.success(res, card);
   });
 
@@ -27,7 +27,7 @@ export class CardsController {
   });
 
   static update = asyncWrapper(async (req: Request, res: Response) => {
-    const card = await CardsService.update(parseId(req.params.id), req.body);
+    const card = await CardsService.update(parseId(req.params.id), req.body, req.user);
     const cardLabel = card.cardSerial || String(card.id);
     logAudit(req, { action: AuditAction.update, module: AuditModule.cards, target: `card:${card.id}`, details: `Updated card ${cardLabel}` });
     ApiResponse.success(res, card);
@@ -35,20 +35,20 @@ export class CardsController {
 
   static delete = asyncWrapper(async (req: Request, res: Response) => {
     const id = parseId(req.params.id);
-    await CardsService.delete(id);
+    await CardsService.delete(id, req.user);
     logAudit(req, { action: AuditAction.delete, module: AuditModule.cards, target: `card:${id}`, details: `Deleted card id=${id}`, severity: 'warning' as any });
     ApiResponse.noContent(res);
   });
 
   // ─── Circulation ───
   static circulation = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await CardsService.circulation(req.query);
+    const result = await CardsService.circulation(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 
   // ─── Monitoring ───
   static listMonitoring = asyncWrapper(async (req: Request, res: Response) => {
-    const result = await CardsService.listMonitoring(req.query);
+    const result = await CardsService.listMonitoring(req.query, req.user);
     ApiResponse.paginated(res, result.data, result.meta);
   });
 

@@ -3,6 +3,7 @@ import { TpeController } from './tpe.controller';
 import { authenticate } from '../../middleware/auth';
 import { allRoles, dpeAndAbove, districtAndAbove } from '../../middleware/rbac';
 import { validate } from '../../middleware/validate';
+import { requirePermission } from '../../middleware/requirePermission';
 import {
   createTpeSchema, updateTpeSchema, tpeListQuerySchema,
   createMaintenanceSchema, updateMaintenanceSchema,
@@ -14,36 +15,36 @@ const router = Router();
 router.use(authenticate);
 
 // ─── Stock ───
-router.get('/stock', allRoles, validate(tpeListQuerySchema, 'query'), TpeController.list);
-router.get('/stock/by-structure/:code', allRoles, TpeController.listByStructure);
-router.get('/stock/:id', allRoles, TpeController.getById);
-router.post('/stock', dpeAndAbove, validate(createTpeSchema), TpeController.create);
-router.put('/stock/:id', dpeAndAbove, validate(updateTpeSchema), TpeController.update);
-router.delete('/stock/:id', dpeAndAbove, TpeController.delete);
+router.get('/stock', allRoles, requirePermission('tpe_stock', 'view'), validate(tpeListQuerySchema, 'query'), TpeController.list);
+router.get('/stock/by-structure/:code', allRoles, requirePermission('tpe_stock', 'view'), TpeController.listByStructure);
+router.get('/stock/:id', allRoles, requirePermission('tpe_stock', 'view'), TpeController.getById);
+router.post('/stock', dpeAndAbove, requirePermission('tpe_stock', 'create'), validate(createTpeSchema), TpeController.create);
+router.put('/stock/:id', dpeAndAbove, requirePermission('tpe_stock', 'edit'), validate(updateTpeSchema), TpeController.update);
+router.delete('/stock/:id', dpeAndAbove, requirePermission('tpe_stock', 'delete'), TpeController.delete);
 
 // ─── Maintenance ───
-router.get('/maintenance', allRoles, TpeController.listMaintenance);
-router.get('/maintenance/problem-types', allRoles, TpeController.getDistinctProblemTypes);
-router.post('/maintenance', districtAndAbove, validate(createMaintenanceSchema), TpeController.createMaintenance);
-router.put('/maintenance/:id', districtAndAbove, validate(updateMaintenanceSchema), TpeController.updateMaintenance);
-router.delete('/maintenance/:id', districtAndAbove, TpeController.deleteMaintenance);
+router.get('/maintenance', allRoles, requirePermission('tpe_maintenance', 'view'), TpeController.listMaintenance);
+router.get('/maintenance/problem-types', allRoles, requirePermission('tpe_maintenance', 'view'), TpeController.getDistinctProblemTypes);
+router.post('/maintenance', districtAndAbove, requirePermission('tpe_maintenance', 'create'), validate(createMaintenanceSchema), TpeController.createMaintenance);
+router.put('/maintenance/:id', districtAndAbove, requirePermission('tpe_maintenance', 'edit'), validate(updateMaintenanceSchema), TpeController.updateMaintenance);
+router.delete('/maintenance/:id', districtAndAbove, requirePermission('tpe_maintenance', 'delete'), TpeController.deleteMaintenance);
 
 // ─── Returns ───
-router.get('/returns', allRoles, TpeController.listReturns);
-router.post('/returns', districtAndAbove, validate(createReturnSchema), TpeController.createReturn);
-router.put('/returns/:id', districtAndAbove, validate(updateReturnSchema), TpeController.updateReturn);
-router.delete('/returns/:id', districtAndAbove, TpeController.deleteReturn);
+router.get('/returns', allRoles, requirePermission('tpe_returns', 'view'), TpeController.listReturns);
+router.post('/returns', districtAndAbove, requirePermission('tpe_returns', 'create'), validate(createReturnSchema), TpeController.createReturn);
+router.put('/returns/:id', districtAndAbove, requirePermission('tpe_returns', 'edit'), validate(updateReturnSchema), TpeController.updateReturn);
+router.delete('/returns/:id', districtAndAbove, requirePermission('tpe_returns', 'delete'), TpeController.deleteReturn);
 
 // ─── Transfers ───
-router.get('/transfers', allRoles, TpeController.listTransfers);
-router.post('/transfers', dpeAndAbove, validate(createTransferSchema), TpeController.createTransfer);
-router.put('/transfers/:id', dpeAndAbove, validate(updateTransferSchema), TpeController.updateTransfer);
-router.delete('/transfers/:id', dpeAndAbove, TpeController.deleteTransfer);
+router.get('/transfers', allRoles, requirePermission('tpe_transfers', 'view'), TpeController.listTransfers);
+router.post('/transfers', dpeAndAbove, requirePermission('tpe_transfers', 'create'), validate(createTransferSchema), TpeController.createTransfer);
+router.put('/transfers/:id', dpeAndAbove, requirePermission('tpe_transfers', 'edit'), validate(updateTransferSchema), TpeController.updateTransfer);
+router.delete('/transfers/:id', dpeAndAbove, requirePermission('tpe_transfers', 'delete'), TpeController.deleteTransfer);
 
 // ─── Reform ───
-router.get('/reforms', allRoles, TpeController.listReforms);
-router.post('/reforms', dpeAndAbove, validate(createReformSchema), TpeController.createReform);
-router.put('/reforms/:id', dpeAndAbove, validate(updateReformSchema), TpeController.updateReform);
-router.delete('/reforms/:id', dpeAndAbove, TpeController.deleteReform);
+router.get('/reforms', allRoles, requirePermission('tpe_reform', 'view'), TpeController.listReforms);
+router.post('/reforms', dpeAndAbove, requirePermission('tpe_reform', 'create'), validate(createReformSchema), TpeController.createReform);
+router.put('/reforms/:id', dpeAndAbove, requirePermission('tpe_reform', 'edit'), validate(updateReformSchema), TpeController.updateReform);
+router.delete('/reforms/:id', dpeAndAbove, requirePermission('tpe_reform', 'delete'), TpeController.deleteReform);
 
 export { router as tpeRoutes };

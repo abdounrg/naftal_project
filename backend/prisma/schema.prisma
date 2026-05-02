@@ -229,6 +229,7 @@ model User {
   phone        String?    @db.VarChar(20)
   passwordHash String     @map("password_hash") @db.VarChar(255)
   role         UserRole
+  avatarUrl    String?    @map("avatar_url") @db.Text
   districtId   Int?       @map("district_id")
   structureId  Int?       @map("structure_id")
   requestedById Int?      @map("requested_by_id")

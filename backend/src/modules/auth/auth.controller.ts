@@ -2,7 +2,8 @@ import { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { ApiResponse } from '../../utils/apiResponse';
 import { asyncWrapper } from '../../middleware/asyncWrapper';
-import { getClientIp } from '../../utils/auditLogger';
+import { getClientIp, logAudit } from '../../utils/auditLogger';
+import { AuditAction, AuditModule } from '@prisma/client';
 
 export class AuthController {
   static login = asyncWrapper(async (req: Request, res: Response) => {
@@ -32,6 +33,12 @@ export class AuthController {
   static logout = asyncWrapper(async (req: Request, res: Response) => {
     const { refreshToken } = req.body;
     await AuthService.logout(req.user!.id, refreshToken);
+    logAudit(req, {
+      action: AuditAction.logout,
+      module: AuditModule.auth,
+      target: `user:${req.user!.id}`,
+      details: refreshToken ? 'User logged out (single session)' : 'User logged out (all sessions)',
+    });
     ApiResponse.success(res, { message: 'Logged out successfully' });
   });
 
@@ -40,8 +47,25 @@ export class AuthController {
     ApiResponse.success(res, profile);
   });
 
+  static changePassword = asyncWrapper(async (req: Request, res: Response) => {
+    const { currentPassword, newPassword } = req.body;
+    const ipAddress = getClientIp(req);
+    await AuthService.changePassword(req.user!.id, currentPassword, newPassword, ipAddress);
+    ApiResponse.success(res, { message: 'Password changed successfully' });
+  });
+
   static createLoginSupportRequest = asyncWrapper(async (req: Request, res: Response) => {
     const request = await AuthService.createLoginSupportRequest(req.body);
     ApiResponse.created(res, request, 'Support request sent successfully');
+  });
+
+  static updateAvatar = asyncWrapper(async (req: Request, res: Response) => {
+    const result = await AuthService.updateAvatar(req.user!.id, req.body?.avatarUrl);
+    ApiResponse.success(res, result, 'Avatar updated');
+  });
+
+  static removeAvatar = asyncWrapper(async (req: Request, res: Response) => {
+    const result = await AuthService.removeAvatar(req.user!.id);
+    ApiResponse.success(res, result, 'Avatar removed');
   });
 }

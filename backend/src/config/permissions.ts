@@ -23,6 +23,7 @@ export interface UserPermissions {
   card_monitoring: SectionPermissions;
   card_transfers: SectionPermissions;
   structures: SectionPermissions;
+  stations: SectionPermissions;
   users: SectionPermissions;
   audit_logs: SectionPermissions;
 }
@@ -41,6 +42,7 @@ export const SECTION_KEYS: (keyof UserPermissions)[] = [
   'card_monitoring',
   'card_transfers',
   'structures',
+  'stations',
   'users',
   'audit_logs',
 ];
@@ -68,6 +70,7 @@ export const ALLOWED_ACTIONS: Record<keyof UserPermissions, Action[]> = {
   card_monitoring:    ['view', 'edit'],
   card_transfers:     ['view', 'create', 'edit', 'delete'],
   structures:         ['view', 'create', 'edit', 'delete'],
+  stations:           ['view', 'create', 'edit', 'delete'],
   users:              ['view', 'create', 'edit', 'delete'],
   audit_logs:         ['view'],
 };
@@ -93,6 +96,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, UserPermissions> = {
     card_monitoring: allAccess,
     card_transfers: allAccess,
     structures: allAccess,
+    stations: allAccess,
     users: allAccess,
     audit_logs: allAccess,
   },
@@ -110,8 +114,9 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, UserPermissions> = {
     card_monitoring: viewCreateEdit,
     card_transfers: viewCreateEdit,
     structures: viewOnly,
+    stations: viewCreateEdit,
     users: noAccess,
-    audit_logs: viewOnly,
+    audit_logs: noAccess,
   },
   district_member: {
     dashboard: viewOnly,
@@ -127,6 +132,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, UserPermissions> = {
     card_monitoring: viewCreateEdit,
     card_transfers: viewCreateEdit,
     structures: viewOnly,
+    stations: viewCreateEdit,
     users: noAccess,
     audit_logs: noAccess,
   },
@@ -144,6 +150,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, UserPermissions> = {
     card_monitoring: viewCreate,
     card_transfers: viewCreate,
     structures: noAccess,
+    stations: viewCreateEdit,
     users: noAccess,
     audit_logs: noAccess,
   },
@@ -161,6 +168,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, UserPermissions> = {
     card_monitoring: viewOnly,
     card_transfers: viewOnly,
     structures: noAccess,
+    stations: viewCreate,
     users: noAccess,
     audit_logs: noAccess,
   },
@@ -170,7 +178,7 @@ export const DEFAULT_PERMISSIONS: Record<UserRole, UserPermissions> = {
 export function getEffectivePermissions(role: UserRole, storedPermissions?: unknown): UserPermissions {
   const defaults = DEFAULT_PERMISSIONS[role];
   if (!storedPermissions || typeof storedPermissions !== 'object') {
-    return clampPermissions(defaults);
+    return enforceRoleLocks(role, clampPermissions(defaults));
   }
   const stored = storedPermissions as Record<string, unknown>;
   const result = { ...defaults };
@@ -185,7 +193,19 @@ export function getEffectivePermissions(role: UserRole, storedPermissions?: unkn
       };
     }
   }
-  return clampPermissions(result);
+  return enforceRoleLocks(role, clampPermissions(result));
+}
+
+/**
+ * Hard role-based locks that override any stored/granted permission.
+ * Audit logs are admin-only by policy — cannot be granted to other roles.
+ */
+function enforceRoleLocks(role: UserRole, perms: UserPermissions): UserPermissions {
+  const locked = { ...perms };
+  if (role !== UserRole.administrator) {
+    locked.audit_logs = { view: false, create: false, edit: false, delete: false };
+  }
+  return locked;
 }
 
 /** Force non-allowed actions to false for every section */

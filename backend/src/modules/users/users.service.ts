@@ -6,6 +6,7 @@ import { AppError } from '../../utils/appError';
 import { parsePagination, buildPaginationMeta, parseSorting } from '../../utils/pagination';
 import { CreateUserInput, UpdateUserInput } from './users.validators';
 import { getEffectivePermissions, UserPermissions, SECTION_KEYS, ALLOWED_ACTIONS } from '../../config/permissions';
+import { AuthUserScope, userScopeWhere } from '../../lib/authScope';
 
 const USER_SELECT = {
   id: true,
@@ -29,11 +30,11 @@ const USER_SELECT = {
 const SORTABLE_FIELDS = ['name', 'email', 'role', 'status', 'createdAt', 'lastLoginAt'];
 
 export class UsersService {
-  static async list(query: any) {
+  static async list(query: any, user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
     const { orderBy } = parseSorting(query, SORTABLE_FIELDS);
 
-    const where: Prisma.UserWhereInput = {};
+    const where: Prisma.UserWhereInput = { AND: [userScopeWhere(user)] };
 
     if (query.search) {
       where.OR = [
@@ -53,8 +54,8 @@ export class UsersService {
     return { data, meta: buildPaginationMeta(total, page, per_page) };
   }
 
-  static async getById(id: number) {
-    const user = await prisma.user.findUnique({ where: { id }, select: USER_SELECT });
+  static async getById(id: number, viewer?: AuthUserScope) {
+    const user = await prisma.user.findFirst({ where: { id, AND: [userScopeWhere(viewer)] }, select: USER_SELECT });
     if (!user) throw AppError.notFound('User not found');
     return user;
   }
@@ -89,11 +90,11 @@ export class UsersService {
     });
   }
 
-  static async listPending(query: any) {
+  static async listPending(query: any, viewer?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
     const { orderBy } = parseSorting(query, SORTABLE_FIELDS);
 
-    const where: Prisma.UserWhereInput = { status: 'pending' };
+    const where: Prisma.UserWhereInput = { status: 'pending', AND: [userScopeWhere(viewer)] };
 
     if (query.search) {
       where.OR = [
@@ -136,9 +137,8 @@ export class UsersService {
     return user;
   }
 
-  static async update(id: number, input: UpdateUserInput) {
-    const user = await prisma.user.findUnique({ where: { id } });
-    if (!user) throw AppError.notFound('User not found');
+  static async update(id: number, input: UpdateUserInput, viewer?: AuthUserScope) {
+    await this.getById(id, viewer);
 
     const { password, structureCode, ...rest } = input as any;
     const data: any = { ...rest };
@@ -165,9 +165,8 @@ export class UsersService {
     });
   }
 
-  static async delete(id: number) {
-    const user = await prisma.user.findUnique({ where: { id } });
-    if (!user) throw AppError.notFound('User not found');
+  static async delete(id: number, viewer?: AuthUserScope) {
+    await this.getById(id, viewer);
 
     await prisma.$transaction([
       prisma.auditLog.deleteMany({ where: { userId: id } }),

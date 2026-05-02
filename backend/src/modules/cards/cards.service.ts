@@ -2,6 +2,7 @@ import { Prisma } from '@prisma/client';
 import { prisma } from '../../lib/prisma';
 import { AppError } from '../../utils/appError';
 import { parsePagination, buildPaginationMeta, parseSorting } from '../../utils/pagination';
+import { AuthUserScope, cardScopeWhere, cardMonitoringScopeWhere } from '../../lib/authScope';
 
 const CARD_INCLUDE = {
   tpe: { select: { id: true, serial: true, model: true } },
@@ -12,10 +13,10 @@ const CARD_SORTABLE = ['cardSerial', 'status', 'receptionDate', 'expirationDate'
 
 export class CardsService {
   // ─── Internal list helper (shared by stock & circulation) ───
-  private static async _listCards(query: any, statusFilter?: Prisma.ManagementCardWhereInput['status']) {
+  private static async _listCards(query: any, statusFilter?: Prisma.ManagementCardWhereInput['status'], user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
     const { orderBy } = parseSorting(query, CARD_SORTABLE);
-    const where: Prisma.ManagementCardWhereInput = {};
+    const where: Prisma.ManagementCardWhereInput = { AND: [cardScopeWhere(user)] };
 
     if (query.search) {
       where.OR = [
@@ -69,16 +70,17 @@ export class CardsService {
   }
 
   // ─── Stock (en_stock cards only) ───
-  static async list(query: any) {
-    return this._listCards(query, 'en_stock');
+  static async list(query: any, user?: AuthUserScope) {
+    return this._listCards(query, 'en_stock', user);
   }
 
   // ─── Circulation (all cards NOT en_stock) ───
-  static async circulation(query: any) {
+  static async circulation(query: any, user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
     const { orderBy } = parseSorting(query, CARD_SORTABLE);
     const where: Prisma.ManagementCardWhereInput = {
       status: { not: 'en_stock' },
+      AND: [cardScopeWhere(user)],
     };
     if (query.search) {
       where.OR = [
@@ -130,9 +132,9 @@ export class CardsService {
     return { data: mapped, meta: buildPaginationMeta(total, page, per_page) };
   }
 
-  static async getById(id: number) {
-    const card = await prisma.managementCard.findUnique({
-      where: { id },
+  static async getById(id: number, user?: AuthUserScope) {
+    const card = await prisma.managementCard.findFirst({
+      where: { id, AND: [cardScopeWhere(user)] },
       include: {
         ...CARD_INCLUDE,
         monitoring: { orderBy: { createdAt: 'desc' }, take: 5, include: { substitutionCard: { select: { id: true, cardSerial: true } } } },
@@ -170,38 +172,42 @@ export class CardsService {
     if (expirationDate && expirationDate < new Date()) status = 'expire';
     else if (deliveryDate && status === 'en_stock') status = 'en_circulation';
 
-    const card = await prisma.managementCard.create({
-      data: {
-        cardSerial,
-        stationId,
-        tpeId: tpeId || null,
-        receptionDate,
-        deliveryDate,
-        expirationDate,
-        status,
-      },
-      include: CARD_INCLUDE,
-    });
-
-    // Auto-create monitoring for problematic statuses
-    if (['perdu', 'vole', 'defectueux'].includes(status)) {
-      await prisma.cardMonitoring.create({
+    const card = await prisma.$transaction(async (tx) => {
+      const created = await tx.managementCard.create({
         data: {
-          cardId: card.id,
-          stationId: stationId || null,
-          status: 'en_traitement',
-          anomalyDate: new Date(),
-          diagnostic: status === 'perdu' ? 'Carte perdue' : status === 'vole' ? 'Carte volée' : 'Carte défectueuse',
-          operationMode: status,
+          cardSerial,
+          stationId,
+          tpeId: tpeId || null,
+          receptionDate,
+          deliveryDate,
+          expirationDate,
+          status,
         },
+        include: CARD_INCLUDE,
       });
-    }
+
+      // Auto-create monitoring for problematic statuses
+      if (['perdu', 'vole', 'defectueux'].includes(status)) {
+        await tx.cardMonitoring.create({
+          data: {
+            cardId: created.id,
+            stationId: stationId || null,
+            status: 'en_traitement',
+            anomalyDate: new Date(),
+            diagnostic: status === 'perdu' ? 'Carte perdue' : status === 'vole' ? 'Carte volée' : 'Carte défectueuse',
+            operationMode: status,
+          },
+        });
+      }
+
+      return created;
+    });
 
     return card;
   }
 
-  static async update(id: number, input: any) {
-    const existing = await this.getById(id);
+  static async update(id: number, input: any, user?: AuthUserScope) {
+    const existing = await this.getById(id, user);
 
     // Resolve field names
     const cardSerial = input.cardSerial || input.card_serial;
@@ -262,15 +268,15 @@ export class CardsService {
     return card;
   }
 
-  static async delete(id: number) {
-    await this.getById(id);
+  static async delete(id: number, user?: AuthUserScope) {
+    await this.getById(id, user);
     await prisma.managementCard.delete({ where: { id } });
   }
 
   // ─── Monitoring ───
-  static async listMonitoring(query: any) {
+  static async listMonitoring(query: any, user?: AuthUserScope) {
     const { skip, take, page, per_page } = parsePagination(query);
-    const where: Prisma.CardMonitoringWhereInput = {};
+    const where: Prisma.CardMonitoringWhereInput = { AND: [cardMonitoringScopeWhere(user)] };
 
     if (query.search) {
       where.card = { cardSerial: { contains: query.search, mode: 'insensitive' } };
